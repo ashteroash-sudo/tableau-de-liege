@@ -161,6 +161,20 @@ svg .etiq{font:12px "Special Elite",monospace;fill:#2a2220}
 svg .etiq-fond{fill:#f3ead8;opacity:.92}
 svg .etiq-main{cursor:pointer}
 
+/* Aide / tuto */
+.aide{width:30px;height:30px;flex:0 0 30px;border-radius:50%;border:1px solid var(--ligne);background:var(--carte2);color:var(--or);font-weight:700;font-size:15px;line-height:1;padding:0}
+.astuce{font-style:normal;text-transform:none;letter-spacing:0;color:var(--or)}
+.tuto-etape h3{margin-bottom:6px}
+.tuto-etape .ico-grand{font-size:34px;line-height:1;margin-bottom:8px}
+.tuto-etape ul{padding-left:18px;margin:8px 0 0}
+.tuto-etape li{margin-bottom:7px}
+.tuto-etape b{color:var(--texte)}
+.tuto-etape p,.tuto-etape li{color:#d6ccc8}
+.points{display:flex;justify-content:center;gap:7px;margin:16px 0 12px}
+.points span{width:8px;height:8px;border-radius:50%;background:var(--ligne)}
+.points span.on{background:var(--sang2)}
+.kbd{display:inline-block;border:1px solid var(--ligne);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:12px;background:var(--bg)}
+
 /* Carnet */
 .carnet{font-family:"Special Elite",monospace;background:var(--papier);color:var(--encre);border:none;min-height:220px;line-height:1.6;
   background-image:repeating-linear-gradient(transparent,transparent 25px,#d9cdb5 26px);background-attachment:local;padding:8px 12px}
@@ -333,8 +347,10 @@ async function demarrer(){
     await sb.auth.signOut(); return;
   }
   $('#connexion').classList.add('cache'); $('#app').classList.remove('cache');
-  if (!location.hash) location.hash = '#/liste/personnage';
+  if (!location.hash) history.replaceState(null, '', '#/liste/personnage');
   rendre();
+  let vu = false; try { vu = localStorage.getItem('liege-tuto-' + S.uid) === '1'; } catch(e) {}
+  if (!vu) tuto();
   canal = sb.channel('liege')
     .on('postgres_changes', {event:'*', schema:'public'}, planifierRecharge)
     .subscribe();
@@ -354,7 +370,7 @@ window.addEventListener('hashchange', () => { fermerModal(); filMode = null; ren
 
 function entete(titre, {retour=null, droite=''} = {}){
   const qui = `<div class="qui"><b>${esc(S.profil?.nom || '')}</b>${estMJ() ? ' · MJ' : ''}<br><button onclick="deconnexion()">quitter</button></div>`;
-  $('#haut').innerHTML = `${retour ? `<a class="retour" href="${retour}" aria-label="Retour" style="text-decoration:none">‹</a>` : ''}<h2>${esc(titre)}</h2>${droite}${qui}`;
+  $('#haut').innerHTML = `${retour ? `<a class="retour" href="${retour}" aria-label="Retour" style="text-decoration:none">‹</a>` : ''}<h2>${esc(titre)}</h2>${droite}<button class="aide" onclick="tuto()" aria-label="Mode d’emploi">?</button>${qui}`;
 }
 function navActive(t){
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('actif', a.dataset.t === t));
@@ -501,10 +517,10 @@ function voirImage(path){
 /* =========================================================
    Formulaire fiche (création / modification)
    ========================================================= */
-function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=null} = {}){
+function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=null, image=null} = {}){
   const f = id ? fiche(id) : null;
   const d = f || {type, nom, prive, clan:'', faction:'', ville:'', description:''};
-  let typeCourant = d.type, nouvelleImage = null, retirerImage = false;
+  let typeCourant = d.type, nouvelleImage = image, retirerImage = false;
   const villes = [...new Set(['Chicago','Gary', ...S.fiches.map(x => x.ville).filter(Boolean)])];
   ouvrirModal(`
     <h3>${f ? 'Modifier' : 'Nouvelle fiche'}</h3>
@@ -517,7 +533,7 @@ function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=nul
     </div>
     <label class="champ"><span>Ville</span><input type="text" id="ff-ville" list="dl-villes" value="${esc(d.ville)}"></label>
     <label class="champ"><span>Notes</span><textarea id="ff-desc" placeholder="Où, quand, ce qu’on sait, ce qu’on soupçonne…">${esc(d.description)}</textarea></label>
-    <label class="champ"><span>Photo</span><input type="file" id="ff-img" accept="image/*"></label>
+    <label class="champ"><span>Photo${PC ? ' <em class="astuce">— ou Ctrl+V pour coller une capture</em>' : ''}</span><input type="file" id="ff-img" accept="image/*"></label>
     <div id="ff-apercu">${d.image_path ? `<img class="apercu" src="${esc(imgUrl(d.image_path))}"><button type="button" class="btn petit" style="margin-top:6px" id="ff-retirer">Retirer la photo</button>` : ''}</div>
     ${(!f || f.auteur === S.uid) ? `<label class="bascule"><input type="checkbox" id="ff-prive" ${d.prive?'checked':''}> 🔒 Privé (visible par moi seul, MJ compris)</label>` : '<div style="height:12px"></div>'}
     <datalist id="dl-clans">${[...new Set(CLANS)].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
@@ -540,10 +556,10 @@ function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=nul
     $('#ff-nom').addEventListener('input', doublon);
     majType();
     if (!f) setTimeout(() => $('#ff-nom').focus(), 50);
-    $('#ff-img').onchange = e => {
-      nouvelleImage = e.target.files[0] || null; retirerImage = false;
-      if (nouvelleImage) $('#ff-apercu').innerHTML = `<img class="apercu" src="${URL.createObjectURL(nouvelleImage)}">`;
-    };
+    const montrer = () => { if (nouvelleImage) $('#ff-apercu').innerHTML = `<img class="apercu" src="${URL.createObjectURL(nouvelleImage)}">`; };
+    $('#ff-img').onchange = e => { nouvelleImage = e.target.files[0] || null; retirerImage = false; montrer(); };
+    collerIci = file => { nouvelleImage = file; retirerImage = false; montrer(); toast('Image collée'); };
+    montrer();
     const r = $('#ff-retirer'); if (r) r.onclick = () => { retirerImage = true; $('#ff-apercu').innerHTML = '<p class="meta">Photo retirée à l’enregistrement.</p>'; };
     $('#ff-ok').onclick = async () => {
       const nomV = $('#ff-nom').value.trim();
@@ -776,12 +792,14 @@ function formNote(pid, eid=null){
 function formPhoto(pid){
   let fichier = null;
   ouvrirModal(`<h3>Épingler une photo</h3>
-    <label class="champ"><span>Photo (galerie ou appareil)</span><input type="file" id="fo-f" accept="image/*"></label>
+    <label class="champ"><span>Photo (galerie ou appareil)${PC ? ' <em class="astuce">— ou Ctrl+V</em>' : ''}</span><input type="file" id="fo-f" accept="image/*"></label>
     <div id="fo-ap"></div>
     <label class="champ" style="margin-top:12px"><span>Légende</span><input type="text" id="fo-l" placeholder="Tableau de FRV ?" maxlength="140"></label>
     <div class="erreur" id="fo-err"></div>
     <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="fo-ok">Épingler</button></div>`, () => {
-    $('#fo-f').onchange = ev => { fichier = ev.target.files[0]; if (fichier) $('#fo-ap').innerHTML = `<img class="apercu" src="${URL.createObjectURL(fichier)}">`; };
+    const montrer = () => { if (fichier) $('#fo-ap').innerHTML = `<img class="apercu" src="${URL.createObjectURL(fichier)}">`; };
+    $('#fo-f').onchange = ev => { fichier = ev.target.files[0]; montrer(); };
+    collerIci = file => { fichier = file; montrer(); toast('Image collée'); };
     $('#fo-ok').onclick = async () => {
       if (!fichier) { $('#fo-err').textContent = 'Choisissez une photo.'; return; }
       const b = $('#fo-ok'); b.disabled = true; b.textContent = 'Envoi…';
@@ -1029,6 +1047,103 @@ function vuePrive(){
 }
 
 /* =========================================================
+   Coller une capture (Ctrl+V), surtout pour le PC de la MJ
+   ========================================================= */
+const PC = window.matchMedia('(pointer:fine)').matches;
+let collerIci = null;   // formulaire ouvert qui attend une image
+document.addEventListener('paste', ev => {
+  if (!S.profil) return;
+  const item = [...(ev.clipboardData?.items || [])].find(i => i.kind === 'file' && i.type.startsWith('image/'));
+  if (!item) return;                      // du texte : collage normal
+  const file = item.getAsFile(); if (!file) return;
+  ev.preventDefault();
+  if (collerIci) { collerIci(file); return; }
+  if (document.getElementById('voile')) { toast('Fermez cette fenêtre pour coller une image.'); return; }
+  // Rien d'ouvert : nouvelle fiche avec l'image, épinglée si on est sur une piste
+  const { parts } = route();
+  if (parts[0] === 'piste' && piste(parts[1])){
+    const pid = parts[1], p = piste(pid);
+    formFiche({type:'indice', image:file, prive:false, ensuite: async nid => {
+      if (!p.prive && fiche(nid)?.prive) { toast('Fiche privée : non épinglée dans une piste partagée.'); return; }
+      await epingler(pid, nid);
+      location.hash = `#/piste/${pid}?mode=${modePiste[pid] || 'liste'}`;
+    }});
+  } else {
+    const type = parts[0] === 'liste' && TYPES[parts[1]] ? parts[1] : 'indice';
+    formFiche({type, image:file, prive: parts[0] === 'prive'});
+  }
+});
+
+/* =========================================================
+   Mode d'emploi
+   ========================================================= */
+const ETAPES_TUTO = [
+  { ico:'📌', titre:'Le tableau de liège', html:`
+    <p>Tout ce que la coterie sait — et ce que chacun garde pour soi.</p>
+    <ul>
+      <li><b>🩸 Persos, 🏚️ Lieux, 🔍 Indices</b> : le répertoire de tout ce que vous avez croisé.</li>
+      <li><b>📌 Pistes</b> : vos tableaux de liège, un par question qui vous travaille.</li>
+      <li><b>🔒 Privé</b> : votre carnet et vos secrets.</li>
+    </ul>
+    <p>Le bouton rouge <b>+</b> ajoute quelque chose là où vous êtes.</p>` },
+  { ico:'🗂️', titre:'Une fiche n’existe qu’une fois', html:`
+    <p>Maria Garcia a <b>une seule</b> fiche, pour tout le monde. On ne la recrée pas : on la <b>relie</b>.</p>
+    <ul>
+      <li>En tapant un nom, l’appli signale <b>« Existe déjà »</b> : touchez le nom proposé au lieu de créer un doublon.</li>
+      <li>Pour relier deux fiches, on choisit dans la liste. Si la personne n’y est pas, on la crée d’abord.</li>
+      <li>Les liens se lisent comme une phrase : <i>« Francis Ruiz Verde <b>sire de</b> Maria Garcia »</i>.</li>
+    </ul>` },
+  { ico:'✏️', titre:'Toucher une fiche pour agir', html:`
+    <p>Touchez n’importe quelle fiche (dans une liste ou sur le liège) pour l’ouvrir. Là, vous pouvez :</p>
+    <ul>
+      <li><b>✏️ Modifier</b> : nom, clan, notes, photo…</li>
+      <li><b>🔗 Lier</b> à un autre personnage, lieu ou indice.</li>
+      <li><b>📌 Épingler</b> dans une piste.</li>
+    </ul>
+    <p>Le clan, la faction et la ville sont cliquables : touchez <b>Toréador</b> pour voir tous les Toréadors connus et leurs liens.</p>` },
+  { ico:'🧵', titre:'Le liège', html:`
+    <ul>
+      <li><b>+</b> pour épingler une fiche, une note ou une photo.</li>
+      <li><b>Glisser une carte</b> pour la déplacer · <b>glisser le fond</b> pour se promener · <b>pincer</b> pour zoomer.</li>
+      <li><b>🧵 Fil</b> : touchez deux cartes pour tendre un fil rouge et y écrire un soupçon. Touchez son étiquette pour le couper.</li>
+      <li>Les pointillés apparaissent seuls : ce sont les liens déjà connus entre les fiches épinglées.</li>
+      <li><b>⤢ Tout voir</b> si vous êtes perdu.</li>
+    </ul>` },
+  { ico:'🔒', titre:'Ce qui est privé reste privé', html:`
+    <ul>
+      <li>Une fiche, un lien ou une piste marqué <b>🔒 Privé</b> n’est visible que par vous. <b>Pas même la MJ.</b></li>
+      <li>Votre <b>carnet</b> (onglet Privé) s’enregistre tout seul.</li>
+      <li>Le jour où vous voulez révéler un secret : ouvrez la fiche et touchez <b>📣 Partager</b>. Une fois vue, elle est vue.</li>
+    </ul>` },
+  { ico:'📋', titre:'Coller une capture', pc:true, html:`
+    <p>Sur ordinateur : faites une capture d’écran, puis <span class="kbd">Ctrl</span> + <span class="kbd">V</span> n’importe où.</p>
+    <ul>
+      <li>Sur une piste : une nouvelle fiche s’ouvre avec l’image, puis elle s’épingle sur le liège.</li>
+      <li>Dans un formulaire ouvert : l’image remplace la photo.</li>
+    </ul>
+    <p>Sur téléphone : faites la capture, puis choisissez-la dans la galerie avec le bouton Photo.</p>` }
+];
+function tuto(depart = 0){
+  const etapes = ETAPES_TUTO.filter(e => !e.pc || PC || estMJ());
+  let i = Math.min(depart, etapes.length - 1);
+  const fini = () => { try { localStorage.setItem('liege-tuto-' + S.uid, '1'); } catch(e) {} fermerModal(); };
+  const afficher = () => {
+    const e = etapes[i], dernier = i === etapes.length - 1;
+    ouvrirModal(`<div class="tuto-etape"><div class="ico-grand">${e.ico}</div><h3>${e.titre}</h3>${e.html}</div>
+      <div class="points">${etapes.map((_, k) => `<span class="${k===i?'on':''}"></span>`).join('')}</div>
+      <div class="boutons">
+        ${i > 0 ? '<button class="btn" id="tu-prec">‹ Précédent</button>' : '<button class="btn" id="tu-passer">Passer</button>'}
+        <button class="btn plein" id="tu-suiv">${dernier ? 'C’est parti' : 'Suivant ›'}</button>
+      </div>`, () => {
+      const prec = $('#tu-prec'); if (prec) prec.onclick = () => { i--; afficher(); };
+      const passer = $('#tu-passer'); if (passer) passer.onclick = fini;
+      $('#tu-suiv').onclick = () => { if (dernier) fini(); else { i++; afficher(); } };
+    });
+  };
+  afficher();
+}
+
+/* =========================================================
    Modales
    ========================================================= */
 function ouvrirModal(html, monter){
@@ -1041,6 +1156,7 @@ function ouvrirModal(html, monter){
   if (monter) monter(v);
 }
 function fermerModal(){
+  collerIci = null;
   const v = document.getElementById('voile'); if (!v) return;
   v.remove();
   if (S.rechargeEnAttente) { S.rechargeEnAttente = false; planifierRecharge(); }
