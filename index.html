@@ -472,6 +472,7 @@ function vueFiche(id){
         <div class="nom" style="font-weight:600">${l.prive ? '🔒 ' : ''}${esc(o.nom)}</div>
         <div class="phrase">${esc(src.nom)} <em>${esc(l.etiquette || 'lié à')}</em> ${esc(cib.nom)}</div>
       </div></a>
+      ${(!l.prive || l.auteur === S.uid) ? `<button class="x" onclick="formModifLien('${l.id}')" aria-label="Modifier ce lien" style="font-size:16px">✏️</button>` : ''}
       ${peutSuppr(l) ? `<button class="x" onclick="supprLien('${l.id}')" aria-label="Retirer ce lien">×</button>` : ''}
     </div>`;
   };
@@ -507,6 +508,31 @@ async function rendrePublic(id){
   if (!await confirmer('Partager cette fiche avec toute la coterie ? Une fois vue, elle est vue.')) return;
   verif(await sb.from('fiches').update({prive:false}).eq('id', id), 'Partage');
   toast('Fiche partagée'); apresModif();
+}
+function formModifLien(id){
+  const l = S.liens.find(x => x.id === id); if (!l) return;
+  let src = l.source, cib = l.cible;
+  ouvrirModal(`
+    <h3>Modifier le lien</h3>
+    <label class="champ"><span>Nature du lien</span><input type="text" id="ml-etiq" list="dl-etiq2" value="${esc(l.etiquette || '')}" placeholder="allié de, sire de…"></label>
+    <datalist id="dl-etiq2">${ETIQUETTES.map(e => `<option value="${esc(e)}">`).join('')}</datalist>
+    <p class="desc" id="ml-phrase" style="margin:-4px 0 10px"></p>
+    <button type="button" class="btn petit" id="ml-inv">⇄ Inverser le sens</button>
+    ${l.auteur === S.uid ? `<label class="bascule" style="margin-top:14px"><input type="checkbox" id="ml-prive" ${l.prive?'checked':''}> 🔒 Lien privé</label>` : '<div style="height:14px"></div>'}
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="ml-ok">Enregistrer</button></div>
+  `, () => {
+    const phrase = () => $('#ml-phrase').textContent = `${fiche(src).nom} ${$('#ml-etiq').value.trim() || 'lié à'} ${fiche(cib).nom}`;
+    phrase();
+    $('#ml-etiq').addEventListener('input', phrase);
+    $('#ml-inv').onclick = () => { [src, cib] = [cib, src]; phrase(); };
+    setTimeout(() => { const e = $('#ml-etiq'); e.focus(); e.select(); }, 50);
+    $('#ml-ok').onclick = async () => {
+      const row = {etiquette: $('#ml-etiq').value.trim() || null, source: src, cible: cib};
+      const pv = $('#ml-prive'); if (pv) row.prive = pv.checked;
+      verif(await sb.from('liens').update(row).eq('id', id), 'Modification du lien');
+      fermerModal(); apresModif(); toast('Lien modifié');
+    };
+  });
 }
 async function supprLien(id){
   if (!await confirmer('Retirer ce lien ?')) return;
