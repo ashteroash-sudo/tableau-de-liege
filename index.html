@@ -71,7 +71,7 @@ nav.bas a.actif .ico{filter:drop-shadow(0 0 6px var(--sang2))}
 .liste{display:flex;flex-direction:column;gap:10px}
 .item{display:flex;gap:12px;align-items:center;background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:10px;text-decoration:none;color:inherit;position:relative}
 .item:active{background:var(--carte2)}
-.vign{width:54px;height:54px;border-radius:10px;flex:0 0 54px;object-fit:cover;background:var(--carte2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:24px;font-weight:700;color:var(--or)}
+.vign{width:54px;height:54px;border-radius:10px;flex:0 0 54px;object-fit:cover;object-position:50% 20%;background:var(--carte2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:24px;font-weight:700;color:var(--or)}
 .item .txt{min-width:0;flex:1}
 .item .nom{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .sous{font-size:13px;color:var(--doux);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -82,7 +82,7 @@ nav.bas a.actif .ico{filter:drop-shadow(0 0 6px var(--sang2))}
 .section-titre{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--doux);margin:22px 0 8px}
 
 /* ---------- Fiche ---------- */
-.fiche-img{width:100%;max-height:340px;object-fit:cover;border-radius:var(--r);display:block;margin-bottom:14px;background:var(--carte2)}
+.fiche-img{width:100%;height:auto;max-height:60vh;object-fit:contain;border-radius:var(--r);display:block;margin-bottom:14px;background:var(--carte2)}
 .fiche-entete{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
 .fiche-entete h1{font-size:32px;line-height:1.1;flex:1}
 .typebadge{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--doux);border:1px solid var(--ligne);border-radius:6px;padding:2px 6px;white-space:nowrap;margin-top:6px}
@@ -129,7 +129,7 @@ nav.bas a.actif .ico{filter:drop-shadow(0 0 6px var(--sang2))}
 .onglets a{padding:7px 14px;font-size:14px;color:var(--doux);text-decoration:none}
 .onglets a.on{background:var(--sang);color:#fff}
 .note-carte{background:var(--papier);color:var(--encre);font-family:"Special Elite",monospace;border-radius:4px;padding:12px;white-space:pre-wrap;font-size:14px}
-.photo-carte img{width:100%;border-radius:8px;display:block}
+.photo-carte img{width:100%;max-height:60vh;object-fit:contain;border-radius:8px;display:block;background:var(--bg)}
 .photo-carte .leg{font-family:"Special Elite",monospace;font-size:13px;color:var(--doux);margin-top:6px}
 .el{background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:10px;position:relative}
 .el .x{position:absolute;top:-10px;right:-8px;z-index:2;background:rgba(0,0,0,.4);border-radius:50%}
@@ -144,7 +144,7 @@ nav.bas a.actif .ico{filter:drop-shadow(0 0 6px var(--sang2))}
 .monde svg{position:absolute;left:0;top:0;width:4000px;height:4000px;overflow:visible}
 .carte-t{position:absolute;width:150px;background:var(--papier);color:var(--encre);border-radius:3px;padding:8px 8px 10px;box-shadow:0 4px 10px rgba(0,0,0,.35);user-select:none;-webkit-user-select:none}
 .carte-t::before{content:"";position:absolute;top:-7px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff6b7d,#8e1426 70%);box-shadow:0 2px 3px rgba(0,0,0,.4)}
-.carte-t img{width:100%;height:110px;object-fit:cover;display:block;border-radius:2px;pointer-events:none}
+.carte-t img{width:100%;height:auto;max-height:190px;object-fit:contain;background:#e6dcc6;display:block;border-radius:2px;pointer-events:none}
 .carte-t .t{font-family:"Cormorant Garamond",serif;font-weight:700;font-size:17px;line-height:1.1;margin-top:6px;word-break:break-word}
 .carte-t .s{font-size:11px;color:#6b5c56}
 .carte-t.note{font-family:"Special Elite",monospace;font-size:13px;background:#fff6b8;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:hidden}
