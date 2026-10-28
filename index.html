@@ -161,6 +161,23 @@ svg .etiq{font:12px "Special Elite",monospace;fill:#2a2220}
 svg .etiq-fond{fill:#f3ead8;opacity:.92}
 svg .etiq-main{cursor:pointer}
 
+/* Statut des personnages */
+.vw{position:relative;display:inline-flex;flex:0 0 auto;border-radius:10px;overflow:hidden}
+.vw.st-mort .vign{filter:grayscale(1) brightness(.75)}
+.vw.st-inconnu::after,.fw.st-inconnu::after{content:"?";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(10,6,8,.5);color:#fff;font:700 30px/1 "Cormorant Garamond",serif;text-shadow:0 2px 6px #000;pointer-events:none}
+.fw{position:relative;border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+.fw .fiche-img{margin-bottom:0}
+.fw.st-inconnu::after{font-size:110px;background:rgba(10,6,8,.45)}
+.fw.st-mort .fiche-img{filter:grayscale(1) brightness(.75)}
+.item.st-mort{opacity:.62}
+.item.st-mort .nom{text-decoration:line-through;text-decoration-color:var(--sang2)}
+.puce.statut.st-mort{border-color:#555;color:#bbb}
+.puce.statut.st-inconnu{border-color:#5b4a2a;color:var(--or)}
+.carte-t.st-mort{filter:grayscale(1);opacity:.72}
+.carte-t.st-mort .t{text-decoration:line-through}
+.carte-t.st-inconnu::after{content:"?";position:absolute;right:6px;top:2px;font:700 34px/1 "Cormorant Garamond",serif;color:var(--sang);text-shadow:0 1px 0 #fff}
+
 /* Aide / tuto */
 .aide{width:30px;height:30px;flex:0 0 30px;border-radius:50%;border:1px solid var(--ligne);background:var(--carte2);color:var(--or);font-weight:700;font-size:15px;line-height:1;padding:0}
 .astuce{font-style:normal;text-transform:none;letter-spacing:0;color:var(--or)}
@@ -256,10 +273,12 @@ function verif(res, msg){
   if (res.error){ console.error(res.error); toast((msg || 'Erreur') + ' : ' + res.error.message); throw res.error; }
   return res.data;
 }
+const STATUTS = {actif:{lib:'Actif',ico:'🩸'}, inconnu:{lib:'Inconnu',ico:'❓'}, mort:{lib:'Mort',ico:'✝'}};
+function statutCls(f){ return f?.type === 'personnage' && f.statut && f.statut !== 'actif' ? 'st-' + f.statut : ''; }
 function vignette(f, cls=''){
-  if (f?.image_path) return `<img class="vign ${cls}" src="${esc(imgUrl(f.image_path))}" alt="" loading="lazy">`;
   const ini = (f?.nom || '?').trim().charAt(0).toUpperCase();
-  return `<div class="vign ${cls}">${esc(ini)}</div>`;
+  const img = f?.image_path ? `<img class="vign ${cls}" src="${esc(imgUrl(f.image_path))}" alt="" loading="lazy">` : `<div class="vign ${cls}">${esc(ini)}</div>`;
+  return `<span class="vw ${statutCls(f)}">${img}</span>`;
 }
 function sousTitre(f){
   return [f.clan, f.faction, f.ville].filter(Boolean).join(' · ');
@@ -434,7 +453,7 @@ function vueListe(type, params){
       ${liste.length ? liste.map(f => {
         let lies = liensDe(f.id).map(l => autre(l, f.id)).filter(Boolean);
         if (actif) lies = lies.filter(o => filtre.has(o.id));
-        return `<a class="item" href="#/fiche/${f.id}">
+        return `<a class="item ${statutCls(f)}" href="#/fiche/${f.id}">
           ${vignette(f)}
           <div class="txt">
             <div class="nom">${f.prive ? '<span class="cadenas">🔒</span> ' : ''}${esc(f.nom)}</div>
@@ -477,9 +496,10 @@ function vueFiche(id){
     </div>`;
   };
   $('#contenu').innerHTML = `
-    ${f.image_path ? `<img class="fiche-img" src="${esc(imgUrl(f.image_path))}" alt="" onclick="voirImage('${esc(f.image_path)}')">` : ''}
+    ${f.image_path ? `<div class="fw ${statutCls(f)}"><img class="fiche-img" src="${esc(imgUrl(f.image_path))}" alt="" onclick="voirImage('${esc(f.image_path)}')"></div>` : ''}
     <div class="fiche-entete"><h1>${esc(f.nom)}</h1><span class="typebadge">${TYPES[f.type].ico} ${TYPES[f.type].un}</span></div>
     <div class="puces">
+      ${statutCls(f) ? `<span class="puce statut ${statutCls(f)}">${STATUTS[f.statut].ico} ${f.statut === 'mort' ? 'Mort' : 'Statut inconnu'}</span>` : ''}
       ${f.prive ? '<span class="puce prive">🔒 Privé — visible par vous seul</span>' : ''}
       ${puceFiltre('clan', f.clan, 'clan')}${puceFiltre('faction', f.faction)}${puceFiltre('ville', f.ville)}
     </div>
@@ -557,6 +577,8 @@ function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=nul
     <label class="champ"><span>Nom</span><input type="text" id="ff-nom" value="${esc(d.nom)}" maxlength="120"></label>
     <div class="avert" id="ff-doublon"></div>
     <div id="ff-perso">
+      <div class="champ"><span style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--doux);margin-bottom:5px">Statut</span>
+        <div class="seg" id="ff-statut" style="margin-bottom:0">${Object.entries(STATUTS).map(([k,v]) => `<button type="button" data-s="${k}" class="${k===(d.statut||'actif')?'on':''}">${v.ico} ${v.lib}</button>`).join('')}</div></div>
       <label class="champ"><span>Clan</span><input type="text" id="ff-clan" list="dl-clans" value="${esc(d.clan)}" placeholder="Toréador, Inconnu…"></label>
       <label class="champ"><span>Faction</span><input type="text" id="ff-faction" list="dl-factions" value="${esc(d.faction)}" placeholder="Camarilla, Anarchs…"></label>
     </div>
@@ -582,6 +604,7 @@ function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=nul
       $('#ff-doublon').innerHTML = sim.length ? `Existe déjà : ${sim.slice(0,3).map(x => `<a href="#/fiche/${x.id}">${esc(x.nom)}</a>`).join(', ')}` : '';
     };
     document.querySelectorAll('#ff-type button').forEach(b => b.onclick = () => { typeCourant = b.dataset.t; majType(); });
+    document.querySelectorAll('#ff-statut button').forEach(b => b.onclick = () => document.querySelectorAll('#ff-statut button').forEach(x => x.classList.toggle('on', x === b)));
     $('#ff-nom').addEventListener('input', doublon);
     majType();
     if (!f) setTimeout(() => $('#ff-nom').focus(), 50);
@@ -600,7 +623,8 @@ function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=nul
           clan: typeCourant === 'personnage' ? ($('#ff-clan').value.trim() || null) : null,
           faction: typeCourant === 'personnage' ? ($('#ff-faction').value.trim() || null) : null,
           ville: $('#ff-ville').value.trim() || null,
-          description: $('#ff-desc').value.trim() || null
+          description: $('#ff-desc').value.trim() || null,
+          statut: typeCourant === 'personnage' ? (document.querySelector('#ff-statut .on')?.dataset.s || 'actif') : 'actif'
         };
         const pv = $('#ff-prive'); if (pv) row.prive = pv.checked;
         if (nouvelleImage) row.image_path = await envoyerImage(nouvelleImage);
@@ -748,7 +772,7 @@ function vuePiste(id, mode){
     <div class="liste">${els.length ? els.map(e => {
       const x = peutRetirerEl(e) ? `<button class="x" onclick="retirerEl('${e.id}')" aria-label="Retirer">×</button>` : '';
       if (e.fiche_id){ const f = fiche(e.fiche_id);
-        return `<div class="el">${x}<a class="item" href="#/fiche/${f.id}">${vignette(f)}<div class="txt"><div class="nom">${f.prive?'🔒 ':''}${esc(f.nom)}</div><div class="sous">${TYPES[f.type].un}${sousTitre(f) ? ' · ' + esc(sousTitre(f)) : ''}</div>${e.legende ? `<div class="lies">${esc(e.legende)}</div>`:''}</div></a></div>`; }
+        return `<div class="el">${x}<a class="item ${statutCls(f)}" href="#/fiche/${f.id}">${vignette(f)}<div class="txt"><div class="nom">${f.prive?'🔒 ':''}${esc(f.nom)}</div><div class="sous">${TYPES[f.type].un}${sousTitre(f) ? ' · ' + esc(sousTitre(f)) : ''}</div>${e.legende ? `<div class="lies">${esc(e.legende)}</div>`:''}</div></a></div>`; }
       if (e.image_path) return `<div class="el photo-carte">${x}<img src="${esc(imgUrl(e.image_path))}" alt="" onclick="voirImage('${esc(e.image_path)}')"><div class="leg">${esc(e.legende || '')}</div><div class="meta">${esc(nomDe(e.auteur))}</div></div>`;
       return `<div class="el">${x}<div class="note-carte" onclick="formNote('${id}','${e.id}')">${esc(e.note)}</div><div class="meta">${esc(nomDe(e.auteur))}</div></div>`;
     }).join('') : '<div class="vide">Rien d’épinglé.<br>Touchez <b>+</b> pour épingler une fiche, une note ou une photo.</div>'}</div>
@@ -882,7 +906,7 @@ function vueToile(p, els, barre){
   });
   const carte = e => {
     if (e.fiche_id){ const f = fiche(e.fiche_id);
-      return `<div class="carte-t" data-el="${e.id}" style="left:${e._x}px;top:${e._y}px">
+      return `<div class="carte-t ${statutCls(f)}" data-el="${e.id}" style="left:${e._x}px;top:${e._y}px">
         ${f.image_path ? `<img src="${esc(imgUrl(f.image_path))}" alt="" draggable="false">` : ''}
         <div class="t">${f.prive?'🔒 ':''}${esc(f.nom)}</div><div class="s">${esc(TYPES[f.type].un)}${sousTitre(f) ? ' · ' + esc(sousTitre(f)) : ''}</div></div>`; }
     if (e.image_path) return `<div class="carte-t photo" data-el="${e.id}" style="left:${e._x}px;top:${e._y}px"><img src="${esc(imgUrl(e.image_path))}" alt="" draggable="false"><div class="leg">${esc(e.legende || '')}</div></div>`;
@@ -1129,6 +1153,7 @@ const ETAPES_TUTO = [
       <li><b>🔗 Lier</b> à un autre personnage, lieu ou indice.</li>
       <li><b>📌 Épingler</b> dans une piste.</li>
     </ul>
+    <p>Un personnage a un <b>statut</b> : actif, <b>❓ inconnu</b> (disparu, sort incertain) ou <b>✝ mort</b> (carte grisée).</p>
     <p>Le clan, la faction et la ville sont cliquables : touchez <b>Toréador</b> pour voir tous les Toréadors connus et leurs liens.</p>` },
   { ico:'🧵', titre:'Le liège', html:`
     <ul>
