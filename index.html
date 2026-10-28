@@ -218,6 +218,7 @@ const S = {
   occupe:false, rechargeEnAttente:false, q:''
 };
 const toileEtat = {};      // pan/zoom par piste
+const modePiste = {};      // dernière vue utilisée (liste / toile) par piste
 let filMode = null;        // {piste, premier}
 
 /* =========================================================
@@ -366,7 +367,11 @@ function rendre(){
   switch (parts[0]){
     case 'fiche':  return vueFiche(parts[1]);
     case 'pistes': return vuePistes();
-    case 'piste':  return vuePiste(parts[1], params.mode || 'liste');
+    case 'piste': {
+      const mode = params.mode || modePiste[parts[1]] || 'liste';
+      modePiste[parts[1]] = mode;
+      return vuePiste(parts[1], mode);
+    }
     case 'prive':  return vuePrive();
     case 'liste':
     default:       return vueListe(TYPES[parts[1]] ? parts[1] : 'personnage', params);
@@ -686,7 +691,7 @@ function vuePiste(id, mode){
   entete((p.prive ? '🔒 ' : '') + p.titre, {retour:'#/pistes'});
   const els = S.elements.filter(e => e.piste_id === id && (!e.fiche_id || fiche(e.fiche_id)));
   const barre = `<div class="piste-barre">
-    <div class="onglets"><a href="#/piste/${id}" class="${mode==='liste'?'on':''}">☰ Liste</a><a href="#/piste/${id}?mode=toile" class="${mode==='toile'?'on':''}">📌 Liège</a></div>
+    <div class="onglets"><a href="#/piste/${id}?mode=liste" class="${mode==='liste'?'on':''}">☰ Liste</a><a href="#/piste/${id}?mode=toile" class="${mode==='toile'?'on':''}">📌 Liège</a></div>
     ${peutModif ? `<button class="btn petit" onclick="formPiste('${id}')">✏️</button>` : ''}
     ${peutSuppr(p) ? `<button class="btn petit danger" onclick="supprPiste('${id}')">🗑</button>` : ''}
   </div>`;
@@ -727,14 +732,14 @@ function choisirFichePourPiste(pid){
     selecteurFiche($('#cf-sel'), {exclure:[...deja, ...(!p.prive ? S.fiches.filter(f => f.prive).map(f => f.id) : [])], surChoix: async (id, nouveauNom) => {
       if (id){ await epingler(pid, id); fermerModal(); return; }
       fermerModal();
-      formFiche({nom:nouveauNom, prive:false, ensuite: async nid => { await epingler(pid, nid); location.hash = `#/piste/${pid}`; }});
+      formFiche({nom:nouveauNom, prive:false, ensuite: async nid => { await epingler(pid, nid); location.hash = `#/piste/${pid}?mode=${modePiste[pid] || 'liste'}`; }});
     }});
   });
 }
 async function epingler(pid, fid){
   const p = piste(pid), f = fiche(fid);
   if (!p.prive && f.prive){ toast('Partagez d’abord cette fiche pour l’épingler ici.'); return; }
-  verif(await sb.from('piste_elements').insert({piste_id:pid, fiche_id:fid}), 'Épingle');
+  verif(await sb.from('piste_elements').insert({piste_id:pid, fiche_id:fid, ...posLibre(pid)}), 'Épingle');
   toast('Épinglé'); apresModif();
 }
 function epinglerDans(fid){
@@ -792,7 +797,22 @@ function posLibre(pid){
   const st = toileEtat[pid]; if (!st) return {};
   const cadre = document.querySelector('.toile-cadre'); if (!cadre) return {};
   const r = cadre.getBoundingClientRect();
-  return { pos_x: Math.round((r.width/2 - st.x) / st.z - 75 + (Math.random()*40-20)), pos_y: Math.round((r.height/2 - st.y) / st.z - 60 + (Math.random()*40-20)) };
+  const cx = (r.width/2 - st.x) / st.z - 75, cy = (r.height/2 - st.y) / st.z - 60;
+  // chercher une place libre près du centre de l'écran, pour ne pas recouvrir une carte
+  const occupees = [...cadre.querySelectorAll('.carte-t')].map(c => ({x:c.offsetLeft, y:c.offsetTop, w:c.offsetWidth, h:c.offsetHeight}));
+  const libre = (x, y) => occupees.every(o => x + 150 + 10 < o.x || x > o.x + o.w + 10 || y + 150 + 10 < o.y || y > o.y + o.h + 10);
+  const visible = (x, y) => x*st.z + st.x >= 0 && (x+150)*st.z + st.x <= r.width && y*st.z + st.y >= 0 && (y+150)*st.z + st.y <= r.height - 60;
+  for (const exigerVisible of [true, false])
+    for (let anneau = 0; anneau < 6; anneau++)
+      for (let i = -anneau; i <= anneau; i++)
+        for (let j = -anneau; j <= anneau; j++){
+          if (Math.max(Math.abs(i), Math.abs(j)) !== anneau) continue;
+          for (const pas of [90, 175]){
+            const x = Math.round(cx + i * pas), y = Math.round(cy + j * pas);
+            if (x >= 0 && y >= 0 && libre(x, y) && (!exigerVisible || visible(x, y))) return {pos_x:x, pos_y:y};
+          }
+        }
+  return { pos_x: Math.round(cx), pos_y: Math.round(cy) };
 }
 async function retirerEl(id){
   if (!await confirmer('Retirer de la piste ? (La fiche elle-même n’est pas supprimée.)')) return;
