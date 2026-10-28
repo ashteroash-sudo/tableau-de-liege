@@ -510,7 +510,7 @@ function vueFiche(id){
       <button class="btn" onclick="epinglerDans('${id}')">📌 Épingler</button>
       ${(!f.prive || f.auteur === S.uid) ? `<button class="btn" onclick="formFiche({id:'${id}'})">✏️ Modifier</button>` : ''}
       ${f.prive && f.auteur === S.uid ? `<button class="btn" onclick="rendrePublic('${id}')">📣 Partager</button>` : ''}
-      ${peutSuppr(f) ? `<button class="btn danger" onclick="supprFiche('${id}')">Supprimer</button>` : ''}
+      ${peutSuppr(f) ? `<button class="btn" onclick="fusionner('${id}')">🔀 Doublon ?</button><button class="btn danger" onclick="supprFiche('${id}')">🗑 Supprimer</button>` : ''}
     </div>
     ${['personnage','lieu','indice'].map(t => groupes[t].length ? `<div class="section-titre">${TYPES[t].lib} liés (${groupes[t].length})</div>${groupes[t].map(ligneLien).join('')}` : '').join('')}
     ${!liensDe(id).length ? '<div class="section-titre">Liens</div><p class="meta">Aucun lien pour l’instant.</p>' : ''}
@@ -518,6 +518,48 @@ function vueFiche(id){
   `;
 }
 
+/* Doublon : tout reporter sur la bonne fiche, puis supprimer celle-ci */
+function fusionner(id){
+  const x = fiche(id);
+  ouvrirModal(`<h3>Doublon de…</h3>
+    <p class="meta" style="margin-top:-8px">Choisissez la fiche à <b>garder</b>. Les liens, épingles et fils de « ${esc(x.nom)} » y seront reportés, la photo et les notes aussi si elle n’en a pas, puis « ${esc(x.nom)} » sera supprimée.</p>
+    <div id="fu-sel"></div><button class="btn large" onclick="fermerModal()">Annuler</button>`, () => {
+    selecteurFiche($('#fu-sel'), {exclure:[id, ...S.fiches.filter(f => f.type !== x.type || (f.prive && f.auteur !== S.uid)).map(f => f.id)], creer:false, surChoix: async cible => {
+      if (!cible) return;
+      const y = fiche(cible);
+      if (!await confirmer(`Garder « ${y.nom} » et y fusionner « ${x.nom} » ?`)) return;
+      try{ await faireFusion(x, y); toast('Fiches fusionnées'); await apresModif(); location.hash = '#/fiche/' + y.id; }
+      catch(e){ apresModif(); }
+    }});
+  });
+}
+async function faireFusion(x, y){
+  // 1. liens
+  for (const l of S.liens.filter(l => l.source === x.id || l.cible === x.id)){
+    const source = l.source === x.id ? y.id : l.source, cible = l.cible === x.id ? y.id : l.cible;
+    const existe = S.liens.some(m => m.id !== l.id && ((m.source === source && m.cible === cible) || (m.source === cible && m.cible === source)) && (m.etiquette || '') === (l.etiquette || ''));
+    if (source === cible || existe) verif(await sb.from('liens').delete().eq('id', l.id), 'Lien');
+    else verif(await sb.from('liens').update({source, cible}).eq('id', l.id), 'Lien');
+  }
+  // 2. épingles (et leurs fils)
+  for (const e of S.elements.filter(e => e.fiche_id === x.id)){
+    const dejaLa = S.elements.find(k => k.piste_id === e.piste_id && k.fiche_id === y.id);
+    if (!dejaLa){ verif(await sb.from('piste_elements').update({fiche_id: y.id}).eq('id', e.id), 'Épingle'); continue; }
+    for (const f of S.fils.filter(f => f.element_a === e.id || f.element_b === e.id)){
+      const a = f.element_a === e.id ? dejaLa.id : f.element_a, b = f.element_b === e.id ? dejaLa.id : f.element_b;
+      if (a !== b) verif(await sb.from('piste_fils').insert({piste_id: f.piste_id, element_a: a, element_b: b, legende: f.legende}), 'Fil');
+    }
+    verif(await sb.from('piste_elements').delete().eq('id', e.id), 'Épingle');
+  }
+  // 3. compléter la fiche gardée
+  const maj = {};
+  if (!y.image_path && x.image_path) maj.image_path = x.image_path;
+  if (x.description && x.description !== y.description) maj.description = y.description ? y.description + '\n\n' + x.description : x.description;
+  for (const k of ['clan','faction','ville']) if (!y[k] && x[k]) maj[k] = x[k];
+  if (Object.keys(maj).length) verif(await sb.from('fiches').update(maj).eq('id', y.id), 'Fiche');
+  // 4. supprimer le doublon
+  verif(await sb.from('fiches').delete().eq('id', x.id), 'Suppression');
+}
 async function supprFiche(id){
   if (!await confirmer('Supprimer cette fiche, ses liens et ses épingles ?')) return;
   verif(await sb.from('fiches').delete().eq('id', id), 'Suppression');
