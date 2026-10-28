@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
+<meta name="theme-color" content="#120d0e">
+<title>Tableau de liège</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&family=Special+Elite&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#120d0e; --bg2:#1b1416; --carte:#221a1c; --carte2:#2b2124; --ligne:#3a2d31;
+  --texte:#ece4e0; --doux:#a8999b; --sang:#9e1b2f; --sang2:#c4283f; --or:#c9a55c;
+  --papier:#f3ead8; --encre:#2a2220; --liege:#b98a55; --liege2:#a57442;
+  --r:14px; --nav:64px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--texte);font:15px/1.45 Inter,system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{font-family:"Cormorant Garamond",serif;font-weight:700;margin:0;letter-spacing:.01em}
+.cache{display:none!important}
+
+/* ---------- Connexion ---------- */
+#connexion{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;
+  background:radial-gradient(ellipse at top,#2a1418 0%,var(--bg) 65%)}
+.boite{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--ligne);border-radius:18px;padding:28px 22px}
+.boite h1{font-size:34px;text-align:center}
+.boite p.sous{text-align:center;color:var(--doux);margin:4px 0 22px;font-size:14px}
+label.champ{display:block;margin-bottom:14px}
+label.champ span{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--doux);margin-bottom:5px}
+input[type=text],input[type=password],input[type=search],select,textarea{width:100%;background:var(--bg);border:1px solid var(--ligne);border-radius:10px;padding:11px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--sang2)}
+textarea{min-height:110px;resize:vertical}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--ligne);background:var(--carte2);border-radius:10px;padding:10px 14px;font-weight:500}
+.btn.plein{background:var(--sang);border-color:var(--sang);color:#fff}
+.btn.large{width:100%}
+.btn.danger{color:#ff8a98;border-color:#5a2730}
+.btn.petit{padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.5}
+.erreur{color:#ff8a98;font-size:14px;min-height:20px;margin:6px 0}
+
+/* ---------- Structure ---------- */
+#app{min-height:100%;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom))}
+header.haut{position:sticky;top:0;z-index:20;background:rgba(18,13,14,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--ligne);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px;min-height:56px}
+header.haut h2{font-size:24px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.retour{border:none;background:none;font-size:24px;padding:2px 8px 2px 0;line-height:1;color:var(--doux)}
+.qui{font-size:12px;color:var(--doux);text-align:right;line-height:1.2}
+.qui b{color:var(--or);font-weight:600}
+.qui button{border:none;background:none;color:var(--doux);font-size:12px;text-decoration:underline;padding:0}
+main{padding:14px 16px 24px;max-width:760px;margin:0 auto}
+nav.bas{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg2);border-top:1px solid var(--ligne);
+  display:grid;grid-template-columns:repeat(5,1fr);height:calc(var(--nav) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}
+nav.bas a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--doux);text-decoration:none;font-size:11px}
+nav.bas a .ico{font-size:20px;line-height:1}
+nav.bas a.actif{color:var(--texte)}
+nav.bas a.actif .ico{filter:drop-shadow(0 0 6px var(--sang2))}
+
+/* ---------- Listes ---------- */
+.recherche{display:flex;gap:8px;margin-bottom:10px}
+.filtres{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.filtres::-webkit-scrollbar{display:none}
+.filtres select{width:auto;flex:0 0 auto;padding:7px 10px;font-size:13px;border-radius:20px}
+.puce{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--ligne);background:var(--carte);border-radius:20px;padding:4px 10px;font-size:13px;color:var(--texte);text-decoration:none;white-space:nowrap}
+.puce.clan{border-color:#5b3a3f}
+.puce.active{background:var(--sang);border-color:var(--sang)}
+.puce.prive{border-color:#4d4535;color:var(--or)}
+.liste{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;gap:12px;align-items:center;background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:10px;text-decoration:none;color:inherit;position:relative}
+.item:active{background:var(--carte2)}
+.vign{width:54px;height:54px;border-radius:10px;flex:0 0 54px;object-fit:cover;background:var(--carte2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:24px;font-weight:700;color:var(--or)}
+.item .txt{min-width:0;flex:1}
+.item .nom{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .sous{font-size:13px;color:var(--doux);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .lies{font-size:12px;color:var(--or);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cadenas{font-size:13px}
+.vide{text-align:center;color:var(--doux);padding:40px 10px}
+.fab{position:fixed;right:18px;bottom:calc(var(--nav) + 18px + env(safe-area-inset-bottom));z-index:25;width:56px;height:56px;border-radius:50%;border:none;background:var(--sang);color:#fff;font-size:30px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.section-titre{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--doux);margin:22px 0 8px}
+
+/* ---------- Fiche ---------- */
+.fiche-img{width:100%;max-height:340px;object-fit:cover;border-radius:var(--r);display:block;margin-bottom:14px;background:var(--carte2)}
+.fiche-entete{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.fiche-entete h1{font-size:32px;line-height:1.1;flex:1}
+.typebadge{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--doux);border:1px solid var(--ligne);border-radius:6px;padding:2px 6px;white-space:nowrap;margin-top:6px}
+.puces{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.desc{white-space:pre-wrap;background:var(--bg2);border:1px solid var(--ligne);border-radius:var(--r);padding:12px;color:#ddd3cf}
+.meta{font-size:12px;color:var(--doux);margin-top:8px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.lien-ligne{display:flex;gap:10px;align-items:center;background:var(--carte);border:1px solid var(--ligne);border-radius:12px;padding:8px 10px;margin-bottom:8px}
+.lien-ligne a{flex:1;min-width:0;color:inherit;text-decoration:none;display:flex;gap:10px;align-items:center}
+.lien-ligne .vign{width:40px;height:40px;flex-basis:40px;font-size:18px}
+.lien-ligne .phrase{font-size:12px;color:var(--doux)}
+.lien-ligne .phrase em{color:var(--or);font-style:normal}
+.x{border:none;background:none;color:var(--doux);font-size:20px;padding:4px 6px;line-height:1}
+
+/* ---------- Modale ---------- */
+#voile{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.feuille{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--ligne);border-bottom:none;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media(min-width:620px){#voile{align-items:center}.feuille{border-radius:18px;border-bottom:1px solid var(--ligne)}}
+.feuille h3{font-size:24px;margin-bottom:14px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
+.seg button{border:1px solid var(--ligne);background:var(--bg);border-radius:10px;padding:9px 4px;font-size:14px}
+.seg button.on{background:var(--sang);border-color:var(--sang);color:#fff}
+.bascule{display:flex;align-items:center;gap:10px;margin:6px 0 16px;font-size:14px}
+.bascule input{width:20px;height:20px;accent-color:var(--sang)}
+.avert{font-size:13px;color:var(--or);margin:-8px 0 12px}
+.avert a{color:var(--or)}
+.resultats{display:flex;flex-direction:column;gap:6px;margin:8px 0 14px;max-height:260px;overflow:auto}
+.resultats button{display:flex;gap:10px;align-items:center;text-align:left;background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:7px 9px}
+.resultats button.on{border-color:var(--sang2);background:#2e1a1e}
+.resultats .vign{width:34px;height:34px;flex-basis:34px;font-size:16px}
+.apercu{max-width:100%;max-height:200px;border-radius:10px;margin-top:8px;display:block}
+.boutons{display:flex;gap:8px;margin-top:6px}
+.boutons .btn{flex:1}
+.choix{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.choix button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 6px;background:var(--carte);border:1px solid var(--ligne);border-radius:12px;font-size:13px}
+.choix button span{font-size:26px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav) + 20px + env(safe-area-inset-bottom));z-index:60;background:#000;border:1px solid var(--ligne);padding:9px 14px;border-radius:10px;font-size:14px;max-width:90%;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.vu{opacity:1}
+.grande-img{width:100%;border-radius:10px;display:block}
+
+/* ---------- Pistes ---------- */
+.piste-barre{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.onglets{display:inline-flex;border:1px solid var(--ligne);border-radius:10px;overflow:hidden}
+.onglets a{padding:7px 14px;font-size:14px;color:var(--doux);text-decoration:none}
+.onglets a.on{background:var(--sang);color:#fff}
+.note-carte{background:var(--papier);color:var(--encre);font-family:"Special Elite",monospace;border-radius:4px;padding:12px;white-space:pre-wrap;font-size:14px}
+.photo-carte img{width:100%;border-radius:8px;display:block}
+.photo-carte .leg{font-family:"Special Elite",monospace;font-size:13px;color:var(--doux);margin-top:6px}
+.el{background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:10px;position:relative}
+.el .x{position:absolute;top:-10px;right:-8px;z-index:2;background:rgba(0,0,0,.4);border-radius:50%}
+.el a.item{border:none;padding:0;background:none}
+
+/* Toile (liège) */
+.toile-cadre{position:fixed;left:0;right:0;top:var(--haut,56px);bottom:calc(var(--nav) + env(safe-area-inset-bottom));overflow:hidden;touch-action:none;
+  background-color:var(--liege);
+  background-image:radial-gradient(rgba(0,0,0,.18) 1px,transparent 1.6px),radial-gradient(rgba(255,255,255,.12) 1px,transparent 1.4px),radial-gradient(ellipse at center,transparent 40%,rgba(60,30,10,.45) 100%);
+  background-size:7px 7px,11px 11px,100% 100%;background-position:0 0,3px 5px,0 0}
+.monde{position:absolute;left:0;top:0;width:4000px;height:4000px;transform-origin:0 0}
+.monde svg{position:absolute;left:0;top:0;width:4000px;height:4000px;overflow:visible}
+.carte-t{position:absolute;width:150px;background:var(--papier);color:var(--encre);border-radius:3px;padding:8px 8px 10px;box-shadow:0 4px 10px rgba(0,0,0,.35);user-select:none;-webkit-user-select:none}
+.carte-t::before{content:"";position:absolute;top:-7px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff6b7d,#8e1426 70%);box-shadow:0 2px 3px rgba(0,0,0,.4)}
+.carte-t img{width:100%;height:110px;object-fit:cover;display:block;border-radius:2px;pointer-events:none}
+.carte-t .t{font-family:"Cormorant Garamond",serif;font-weight:700;font-size:17px;line-height:1.1;margin-top:6px;word-break:break-word}
+.carte-t .s{font-size:11px;color:#6b5c56}
+.carte-t.note{font-family:"Special Elite",monospace;font-size:13px;background:#fff6b8;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:hidden}
+.carte-t.photo .leg{font-family:"Special Elite",monospace;font-size:12px;margin-top:6px;word-break:break-word}
+.carte-t.choisie{outline:3px solid var(--sang2);outline-offset:2px}
+.carte-t.glisse{box-shadow:0 12px 24px rgba(0,0,0,.45);z-index:5}
+.toile-outils{position:fixed;left:12px;bottom:calc(var(--nav) + 14px + env(safe-area-inset-bottom));z-index:22;display:flex;gap:8px;flex-wrap:wrap;right:84px}
+.toile-outils .btn{background:rgba(27,20,22,.92);box-shadow:0 3px 10px rgba(0,0,0,.4)}
+.toile-outils .btn.on{background:var(--sang);border-color:var(--sang);color:#fff}
+.bandeau-fil{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--haut,56px) + 10px);z-index:22;background:rgba(0,0,0,.8);padding:7px 12px;border-radius:20px;font-size:13px;white-space:nowrap}
+svg .fil-main{stroke:#b3132b;stroke-width:3;fill:none;filter:drop-shadow(0 2px 1px rgba(0,0,0,.35))}
+svg .fil-lien{stroke:#3a2a20;stroke-width:1.6;stroke-dasharray:6 5;fill:none;opacity:.7}
+svg .etiq{font:12px "Special Elite",monospace;fill:#2a2220}
+svg .etiq-fond{fill:#f3ead8;opacity:.92}
+svg .etiq-main{cursor:pointer}
+
+/* Carnet */
+.carnet{font-family:"Special Elite",monospace;background:var(--papier);color:var(--encre);border:none;min-height:220px;line-height:1.6;
+  background-image:repeating-linear-gradient(transparent,transparent 25px,#d9cdb5 26px);background-attachment:local;padding:8px 12px}
+.etat{font-size:12px;color:var(--doux);margin-top:4px;min-height:16px}
+</style>
+</head>
+<body>
+
+<div id="connexion" class="cache">
+  <form class="boite" id="form-connexion" autocomplete="on">
+    <h1>Tableau de liège</h1>
+    <p class="sous">Ce que la coterie sait. Et ce qu'elle tait.</p>
+    <label class="champ"><span>Identifiant</span><input type="text" id="c-id" autocomplete="username" autocapitalize="none" required></label>
+    <label class="champ"><span>Mot de passe</span><input type="password" id="c-mdp" autocomplete="current-password" required></label>
+    <div class="erreur" id="c-err"></div>
+    <button class="btn plein large" type="submit" id="c-btn">Entrer</button>
+  </form>
+</div>
+
+<div id="app" class="cache">
+  <header class="haut" id="haut"></header>
+  <main id="contenu"></main>
+  <nav class="bas" id="nav">
+    <a href="#/liste/personnage" data-t="personnage"><span class="ico">🩸</span>Persos</a>
+    <a href="#/liste/lieu" data-t="lieu"><span class="ico">🏚️</span>Lieux</a>
+    <a href="#/liste/indice" data-t="indice"><span class="ico">🔍</span>Indices</a>
+    <a href="#/pistes" data-t="pistes"><span class="ico">📌</span>Pistes</a>
+    <a href="#/prive" data-t="prive"><span class="ico">🔒</span>Privé</a>
+  </nav>
+</div>
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   Configuration
+   ========================================================= */
+const SUPABASE_URL = 'https://lxjqfytiudvypnbdmmzo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4vTVtuBUlXz8EI4DbTIrrw_SbXsqyGs';
+const DOMAINE = 'coterie.vtm';   // "vito" -> vito@coterie.vtm
+const BUCKET = 'images';
+
+const CLANS = ['Brujah','Gangrel','Malkavien','Nosferatu','Toréador','Tremere','Ventrue','Lasombra','Tzimisce','Banu Haqim','Hecata','Ministère','Ravnos','Salubri','Caitiff','Sang-clair','Humain','Goule','Inconnu'];
+const FACTIONS = ['Camarilla','Anarchs','Sabbat','Autarkis','Indépendant','Humain','Inconnue'];
+const ETIQUETTES = ['sire de','infant de','allié de','ennemi de','travaille pour','partenaire de','membre de','fréquente','vu à','possède','protège','cherche','soupçonne','lié à'];
+const TYPES = {personnage:{lib:'Personnages',un:'Personnage',ico:'🩸'},lieu:{lib:'Lieux',un:'Lieu',ico:'🏚️'},indice:{lib:'Indices',un:'Indice',ico:'🔍'}};
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* =========================================================
+   État
+   ========================================================= */
+const S = {
+  uid:null, profil:null, profils:{},
+  fiches:[], liens:[], pistes:[], elements:[], fils:[], carnet:null,
+  occupe:false, rechargeEnAttente:false, q:''
+};
+const toileEtat = {};      // pan/zoom par piste
+let filMode = null;        // {piste, premier}
+
+/* =========================================================
+   Outils
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = v => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+const imgUrl = p => p ? sb.storage.from(BUCKET).getPublicUrl(p).data.publicUrl : '';
+const estMJ = () => S.profil?.role === 'mj';
+const nomDe = uid => S.profils[uid]?.nom || '?';
+const fiche = id => S.fiches.find(f => f.id === id);
+const piste = id => S.pistes.find(p => p.id === id);
+const peutSuppr = row => row.auteur === S.uid || (estMJ() && !row.prive);
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('vu');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('vu'), 2600);
+}
+function verif(res, msg){
+  if (res.error){ console.error(res.error); toast((msg || 'Erreur') + ' : ' + res.error.message); throw res.error; }
+  return res.data;
+}
+function vignette(f, cls=''){
+  if (f?.image_path) return `<img class="vign ${cls}" src="${esc(imgUrl(f.image_path))}" alt="" loading="lazy">`;
+  const ini = (f?.nom || '?').trim().charAt(0).toUpperCase();
+  return `<div class="vign ${cls}">${esc(ini)}</div>`;
+}
+function sousTitre(f){
+  return [f.clan, f.faction, f.ville].filter(Boolean).join(' · ');
+}
+function liensDe(id){ return S.liens.filter(l => l.source === id || l.cible === id); }
+function autre(l, id){ return fiche(l.source === id ? l.cible : l.source); }
+
+/* Compression des photos (téléphone) */
+async function compresser(file){
+  try{
+    const bmp = await createImageBitmap(file);
+    const max = 1400, r = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * r); c.height = Math.round(bmp.height * r);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.82));
+    return blob || file;
+  }catch(e){ return file; }
+}
+async function envoyerImage(file){
+  const blob = await compresser(file);
+  if (blob.size > 5 * 1024 * 1024) { toast('Image trop lourde (5 Mo max)'); throw new Error('trop lourd'); }
+  const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+  const chemin = `${S.uid}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  verif(await sb.storage.from(BUCKET).upload(chemin, blob, {contentType: blob.type || 'image/jpeg', upsert:false}), 'Envoi de l’image');
+  return chemin;
+}
+
+/* =========================================================
+   Données
+   ========================================================= */
+async function charger(){
+  const [f, l, p, e, fi, pr, c] = await Promise.all([
+    sb.from('fiches').select('*').order('nom'),
+    sb.from('liens').select('*'),
+    sb.from('pistes').select('*').order('created_at'),
+    sb.from('piste_elements').select('*').order('created_at'),
+    sb.from('piste_fils').select('*'),
+    sb.from('profils').select('*'),
+    sb.from('carnets').select('*').eq('auteur', S.uid).maybeSingle()
+  ]);
+  for (const r of [f,l,p,e,fi,pr]) if (r.error) { toast('Chargement : ' + r.error.message); return; }
+  S.fiches = f.data.sort((a,b) => a.nom.localeCompare(b.nom, 'fr', {sensitivity:'base'}));
+  const ids = new Set(S.fiches.map(x => x.id));
+  S.liens = l.data.filter(x => ids.has(x.source) && ids.has(x.cible));
+  S.pistes = p.data; S.elements = e.data; S.fils = fi.data;
+  S.profils = Object.fromEntries(pr.data.map(x => [x.id, x]));
+  S.profil = S.profils[S.uid] || null;
+  if (S.carnet === null) S.carnet = c.data?.contenu || '';
+}
+let rechargeTimer;
+function planifierRecharge(){
+  clearTimeout(rechargeTimer);
+  rechargeTimer = setTimeout(async () => {
+    if (S.occupe || document.getElementById('voile')) { S.rechargeEnAttente = true; return; }
+    await charger(); rendre();
+  }, 350);
+}
+function apresModif(){ S.rechargeEnAttente = false; return charger().then(rendre); }
+
+/* =========================================================
+   Connexion
+   ========================================================= */
+$('#form-connexion').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const btn = $('#c-btn'); btn.disabled = true; $('#c-err').textContent = '';
+  let id = $('#c-id').value.trim().toLowerCase();
+  if (!id.includes('@')) id = `${id}@${DOMAINE}`;
+  const { error } = await sb.auth.signInWithPassword({ email:id, password:$('#c-mdp').value });
+  btn.disabled = false;
+  if (error) { $('#c-err').textContent = 'Identifiant ou mot de passe incorrect.'; return; }
+  demarrer();
+});
+async function deconnexion(){ await sb.auth.signOut(); location.hash = ''; location.reload(); }
+
+let canal;
+async function demarrer(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session){ $('#connexion').classList.remove('cache'); $('#app').classList.add('cache'); return; }
+  S.uid = session.user.id;
+  await charger();
+  if (!S.profil){
+    $('#connexion').classList.remove('cache'); $('#app').classList.add('cache');
+    $('#c-err').textContent = 'Ce compte n’a pas accès au tableau.';
+    await sb.auth.signOut(); return;
+  }
+  $('#connexion').classList.add('cache'); $('#app').classList.remove('cache');
+  if (!location.hash) location.hash = '#/liste/personnage';
+  rendre();
+  canal = sb.channel('liege')
+    .on('postgres_changes', {event:'*', schema:'public'}, planifierRecharge)
+    .subscribe();
+}
+
+/* =========================================================
+   Routage
+   ========================================================= */
+function route(){
+  const h = location.hash.replace(/^#\/?/, '');
+  const [chemin, qs] = h.split('?');
+  const parts = chemin.split('/').map(decodeURIComponent);
+  const params = Object.fromEntries(new URLSearchParams(qs || ''));
+  return { parts, params };
+}
+window.addEventListener('hashchange', () => { fermerModal(); filMode = null; rendre(); });
+
+function entete(titre, {retour=null, droite=''} = {}){
+  const qui = `<div class="qui"><b>${esc(S.profil?.nom || '')}</b>${estMJ() ? ' · MJ' : ''}<br><button onclick="deconnexion()">quitter</button></div>`;
+  $('#haut').innerHTML = `${retour ? `<a class="retour" href="${retour}" aria-label="Retour" style="text-decoration:none">‹</a>` : ''}<h2>${esc(titre)}</h2>${droite}${qui}`;
+}
+function navActive(t){
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('actif', a.dataset.t === t));
+}
+function rendre(){
+  if (!S.profil) return;
+  const { parts, params } = route();
+  document.body.style.overflow = '';
+  const fab = document.querySelector('.fab'); if (fab) fab.remove();
+  switch (parts[0]){
+    case 'fiche':  return vueFiche(parts[1]);
+    case 'pistes': return vuePistes();
+    case 'piste':  return vuePiste(parts[1], params.mode || 'liste');
+    case 'prive':  return vuePrive();
+    case 'liste':
+    default:       return vueListe(TYPES[parts[1]] ? parts[1] : 'personnage', params);
+  }
+}
+function ajouterFab(action){
+  const b = document.createElement('button'); b.className = 'fab'; b.textContent = '+'; b.setAttribute('aria-label','Ajouter');
+  b.onclick = action; document.body.appendChild(b);
+}
+
+/* =========================================================
+   Vue : listes (persos / lieux / indices)
+   ========================================================= */
+function vueListe(type, params){
+  navActive(type);
+  entete(TYPES[type].lib);
+  const tous = S.fiches.filter(f => f.type === type);
+  const valeurs = k => [...new Set(tous.map(f => f[k]).filter(Boolean))].sort((a,b) => a.localeCompare(b,'fr'));
+  const sel = (k, lib) => {
+    const vals = valeurs(k); if (!vals.length && !params[k]) return '';
+    return `<select data-k="${k}" class="${params[k] ? 'puce active' : ''}">
+      <option value="">${lib} : tous</option>
+      ${vals.map(v => `<option ${params[k]===v?'selected':''} value="${esc(v)}">${esc(v)}</option>`).join('')}
+    </select>`;
+  };
+  let liste = tous.filter(f =>
+    (!params.clan || f.clan === params.clan) &&
+    (!params.faction || f.faction === params.faction) &&
+    (!params.ville || f.ville === params.ville) &&
+    (!S.q || norm(f.nom + ' ' + (f.description||'') + ' ' + sousTitre(f)).includes(norm(S.q)))
+  );
+  const filtre = new Set(liste.map(f => f.id));
+  const actif = params.clan || params.faction || params.ville;
+  $('#contenu').innerHTML = `
+    <div class="recherche"><input type="search" id="q" placeholder="Chercher un nom, un mot…" value="${esc(S.q)}"></div>
+    <div class="filtres" id="filtres">
+      ${type === 'personnage' ? sel('clan','Clan') + sel('faction','Faction') : ''}${sel('ville','Ville')}
+    </div>
+    ${actif ? `<p class="meta" style="margin:-4px 0 10px">${liste.length} résultat${liste.length>1?'s':''} · les liens en or sont ceux <b>entre</b> ces fiches</p>` : ''}
+    <div class="liste">
+      ${liste.length ? liste.map(f => {
+        let lies = liensDe(f.id).map(l => autre(l, f.id)).filter(Boolean);
+        if (actif) lies = lies.filter(o => filtre.has(o.id));
+        return `<a class="item" href="#/fiche/${f.id}">
+          ${vignette(f)}
+          <div class="txt">
+            <div class="nom">${f.prive ? '<span class="cadenas">🔒</span> ' : ''}${esc(f.nom)}</div>
+            <div class="sous">${esc(sousTitre(f) || (f.description || '').slice(0, 80))}</div>
+            ${lies.length ? `<div class="lies">↔ ${esc(lies.slice(0,4).map(o=>o.nom).join(', '))}${lies.length>4?'…':''}</div>` : ''}
+          </div></a>`;
+      }).join('') : `<div class="vide">${tous.length ? 'Rien ne correspond.' : `Aucun ${TYPES[type].un.toLowerCase()} pour l’instant.<br>Touchez <b>+</b> pour en ajouter.`}</div>`}
+    </div>`;
+  const q = $('#q');
+  q.addEventListener('input', () => { S.q = q.value; const pos = q.selectionStart; vueListe(type, params); const n = $('#q'); n.focus(); n.setSelectionRange(pos,pos); });
+  document.querySelectorAll('#filtres select').forEach(s => s.addEventListener('change', () => {
+    const p = {...params, [s.dataset.k]: s.value}; Object.keys(p).forEach(k => !p[k] && delete p[k]);
+    const qs = new URLSearchParams(p).toString();
+    location.hash = `#/liste/${type}${qs ? '?' + qs : ''}`;
+  }));
+  ajouterFab(() => formFiche({type}));
+}
+
+/* =========================================================
+   Vue : fiche
+   ========================================================= */
+function vueFiche(id){
+  const f = fiche(id);
+  if (!f){ entete('Fiche', {retour:'#/liste/personnage'}); $('#contenu').innerHTML = '<div class="vide">Cette fiche n’existe plus (ou est privée).</div>'; return; }
+  navActive(f.type);
+  entete(TYPES[f.type].un, {retour:'#/liste/' + f.type});
+  const puceFiltre = (k, v, cls='') => v ? `<a class="puce ${cls}" href="#/liste/${k === 'ville' ? f.type : 'personnage'}?${k}=${encodeURIComponent(v)}">${esc(v)}</a>` : '';
+  const groupes = {personnage:[], lieu:[], indice:[]};
+  liensDe(id).forEach(l => { const o = autre(l, id); if (o) groupes[o.type].push({l, o}); });
+  const pistesOu = S.elements.filter(e => e.fiche_id === id).map(e => piste(e.piste_id)).filter(Boolean);
+  const ligneLien = ({l, o}) => {
+    const src = fiche(l.source), cib = fiche(l.cible);
+    return `<div class="lien-ligne">
+      <a href="#/fiche/${o.id}">${vignette(o)}<div style="min-width:0">
+        <div class="nom" style="font-weight:600">${l.prive ? '🔒 ' : ''}${esc(o.nom)}</div>
+        <div class="phrase">${esc(src.nom)} <em>${esc(l.etiquette || 'lié à')}</em> ${esc(cib.nom)}</div>
+      </div></a>
+      ${peutSuppr(l) ? `<button class="x" onclick="supprLien('${l.id}')" aria-label="Retirer ce lien">×</button>` : ''}
+    </div>`;
+  };
+  $('#contenu').innerHTML = `
+    ${f.image_path ? `<img class="fiche-img" src="${esc(imgUrl(f.image_path))}" alt="" onclick="voirImage('${esc(f.image_path)}')">` : ''}
+    <div class="fiche-entete"><h1>${esc(f.nom)}</h1><span class="typebadge">${TYPES[f.type].ico} ${TYPES[f.type].un}</span></div>
+    <div class="puces">
+      ${f.prive ? '<span class="puce prive">🔒 Privé — visible par vous seul</span>' : ''}
+      ${puceFiltre('clan', f.clan, 'clan')}${puceFiltre('faction', f.faction)}${puceFiltre('ville', f.ville)}
+    </div>
+    ${f.description ? `<div class="desc">${esc(f.description)}</div>` : ''}
+    <div class="meta">Ajouté par ${esc(nomDe(f.auteur))}</div>
+    <div class="actions">
+      <button class="btn" onclick="formLien('${id}')">🔗 Lier</button>
+      <button class="btn" onclick="epinglerDans('${id}')">📌 Épingler</button>
+      ${(!f.prive || f.auteur === S.uid) ? `<button class="btn" onclick="formFiche({id:'${id}'})">✏️ Modifier</button>` : ''}
+      ${f.prive && f.auteur === S.uid ? `<button class="btn" onclick="rendrePublic('${id}')">📣 Partager</button>` : ''}
+      ${peutSuppr(f) ? `<button class="btn danger" onclick="supprFiche('${id}')">Supprimer</button>` : ''}
+    </div>
+    ${['personnage','lieu','indice'].map(t => groupes[t].length ? `<div class="section-titre">${TYPES[t].lib} liés (${groupes[t].length})</div>${groupes[t].map(ligneLien).join('')}` : '').join('')}
+    ${!liensDe(id).length ? '<div class="section-titre">Liens</div><p class="meta">Aucun lien pour l’instant.</p>' : ''}
+    ${pistesOu.length ? `<div class="section-titre">Épinglé dans</div><div class="puces">${pistesOu.map(p => `<a class="puce" href="#/piste/${p.id}">📌 ${esc(p.titre)}</a>`).join('')}</div>` : ''}
+  `;
+}
+
+async function supprFiche(id){
+  if (!await confirmer('Supprimer cette fiche, ses liens et ses épingles ?')) return;
+  verif(await sb.from('fiches').delete().eq('id', id), 'Suppression');
+  const t = fiche(id)?.type || 'personnage';
+  toast('Fiche supprimée'); await apresModif(); location.hash = '#/liste/' + t;
+}
+async function rendrePublic(id){
+  if (!await confirmer('Partager cette fiche avec toute la coterie ? Une fois vue, elle est vue.')) return;
+  verif(await sb.from('fiches').update({prive:false}).eq('id', id), 'Partage');
+  toast('Fiche partagée'); apresModif();
+}
+async function supprLien(id){
+  if (!await confirmer('Retirer ce lien ?')) return;
+  verif(await sb.from('liens').delete().eq('id', id), 'Suppression du lien');
+  apresModif();
+}
+function voirImage(path){
+  ouvrirModal(`<img class="grande-img" src="${esc(imgUrl(path))}" alt=""><div class="boutons" style="margin-top:12px"><button class="btn" onclick="fermerModal()">Fermer</button></div>`);
+}
+
+/* =========================================================
+   Formulaire fiche (création / modification)
+   ========================================================= */
+function formFiche({id=null, type='personnage', nom='', prive=false, ensuite=null} = {}){
+  const f = id ? fiche(id) : null;
+  const d = f || {type, nom, prive, clan:'', faction:'', ville:'', description:''};
+  let typeCourant = d.type, nouvelleImage = null, retirerImage = false;
+  const villes = [...new Set(['Chicago','Gary', ...S.fiches.map(x => x.ville).filter(Boolean)])];
+  ouvrirModal(`
+    <h3>${f ? 'Modifier' : 'Nouvelle fiche'}</h3>
+    ${f ? '' : `<div class="seg" id="ff-type">${Object.entries(TYPES).map(([k,v]) => `<button type="button" data-t="${k}" class="${k===typeCourant?'on':''}">${v.ico} ${v.un}</button>`).join('')}</div>`}
+    <label class="champ"><span>Nom</span><input type="text" id="ff-nom" value="${esc(d.nom)}" maxlength="120"></label>
+    <div class="avert" id="ff-doublon"></div>
+    <div id="ff-perso">
+      <label class="champ"><span>Clan</span><input type="text" id="ff-clan" list="dl-clans" value="${esc(d.clan)}" placeholder="Toréador, Inconnu…"></label>
+      <label class="champ"><span>Faction</span><input type="text" id="ff-faction" list="dl-factions" value="${esc(d.faction)}" placeholder="Camarilla, Anarchs…"></label>
+    </div>
+    <label class="champ"><span>Ville</span><input type="text" id="ff-ville" list="dl-villes" value="${esc(d.ville)}"></label>
+    <label class="champ"><span>Notes</span><textarea id="ff-desc" placeholder="Où, quand, ce qu’on sait, ce qu’on soupçonne…">${esc(d.description)}</textarea></label>
+    <label class="champ"><span>Photo</span><input type="file" id="ff-img" accept="image/*"></label>
+    <div id="ff-apercu">${d.image_path ? `<img class="apercu" src="${esc(imgUrl(d.image_path))}"><button type="button" class="btn petit" style="margin-top:6px" id="ff-retirer">Retirer la photo</button>` : ''}</div>
+    ${(!f || f.auteur === S.uid) ? `<label class="bascule"><input type="checkbox" id="ff-prive" ${d.prive?'checked':''}> 🔒 Privé (visible par moi seul, MJ compris)</label>` : '<div style="height:12px"></div>'}
+    <datalist id="dl-clans">${[...new Set(CLANS)].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <datalist id="dl-factions">${FACTIONS.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <datalist id="dl-villes">${villes.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="erreur" id="ff-err"></div>
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="ff-ok">Enregistrer</button></div>
+  `, () => {
+    const majType = () => {
+      $('#ff-perso').classList.toggle('cache', typeCourant !== 'personnage');
+      document.querySelectorAll('#ff-type button').forEach(b => b.classList.toggle('on', b.dataset.t === typeCourant));
+      doublon();
+    };
+    const doublon = () => {
+      const n = norm($('#ff-nom').value); if (n.length < 3) { $('#ff-doublon').innerHTML = ''; return; }
+      const sim = S.fiches.filter(x => x.id !== id && x.type === typeCourant && (norm(x.nom).includes(n) || n.includes(norm(x.nom))));
+      $('#ff-doublon').innerHTML = sim.length ? `Existe déjà : ${sim.slice(0,3).map(x => `<a href="#/fiche/${x.id}">${esc(x.nom)}</a>`).join(', ')}` : '';
+    };
+    document.querySelectorAll('#ff-type button').forEach(b => b.onclick = () => { typeCourant = b.dataset.t; majType(); });
+    $('#ff-nom').addEventListener('input', doublon);
+    majType();
+    if (!f) setTimeout(() => $('#ff-nom').focus(), 50);
+    $('#ff-img').onchange = e => {
+      nouvelleImage = e.target.files[0] || null; retirerImage = false;
+      if (nouvelleImage) $('#ff-apercu').innerHTML = `<img class="apercu" src="${URL.createObjectURL(nouvelleImage)}">`;
+    };
+    const r = $('#ff-retirer'); if (r) r.onclick = () => { retirerImage = true; $('#ff-apercu').innerHTML = '<p class="meta">Photo retirée à l’enregistrement.</p>'; };
+    $('#ff-ok').onclick = async () => {
+      const nomV = $('#ff-nom').value.trim();
+      if (!nomV) { $('#ff-err').textContent = 'Il faut un nom.'; return; }
+      const btn = $('#ff-ok'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+      try{
+        const row = {
+          nom: nomV,
+          clan: typeCourant === 'personnage' ? ($('#ff-clan').value.trim() || null) : null,
+          faction: typeCourant === 'personnage' ? ($('#ff-faction').value.trim() || null) : null,
+          ville: $('#ff-ville').value.trim() || null,
+          description: $('#ff-desc').value.trim() || null
+        };
+        const pv = $('#ff-prive'); if (pv) row.prive = pv.checked;
+        if (nouvelleImage) row.image_path = await envoyerImage(nouvelleImage);
+        else if (retirerImage) row.image_path = null;
+        let nouvelId = id;
+        if (f) verif(await sb.from('fiches').update(row).eq('id', id), 'Enregistrement');
+        else {
+          row.type = typeCourant;
+          nouvelId = verif(await sb.from('fiches').insert(row).select('id').single(), 'Création').id;
+        }
+        fermerModal(); await apresModif();
+        if (ensuite) ensuite(nouvelId);
+        else if (!f) location.hash = `#/fiche/${nouvelId}`;
+        toast(f ? 'Fiche modifiée' : 'Fiche créée');
+      }catch(e){ btn.disabled = false; btn.textContent = 'Enregistrer'; }
+    };
+  });
+}
+
+/* =========================================================
+   Sélecteur de fiche (autocomplétion, anti-doublon)
+   ========================================================= */
+function selecteurFiche(conteneur, {exclure=[], surChoix, creer=true}){
+  conteneur.innerHTML = `<input type="search" class="sf-q" placeholder="Taper un nom…"><div class="resultats sf-res"></div>`;
+  const q = conteneur.querySelector('.sf-q'), res = conteneur.querySelector('.sf-res');
+  let choisi = null;
+  const maj = () => {
+    const n = norm(q.value);
+    const liste = S.fiches.filter(f => !exclure.includes(f.id) && (!n || norm(f.nom).includes(n))).slice(0, 30);
+    res.innerHTML = liste.map(f => `<button type="button" data-id="${f.id}" class="${choisi===f.id?'on':''}">${vignette(f)}<span><b>${f.prive?'🔒 ':''}${esc(f.nom)}</b><br><small style="color:var(--doux)">${TYPES[f.type].un}${sousTitre(f) ? ' · ' + esc(sousTitre(f)) : ''}</small></span></button>`).join('')
+      + (creer && n && !S.fiches.some(f => norm(f.nom) === n) ? `<button type="button" data-creer="1"><span class="vign">+</span><span>Pas dans la liste ? <b>Créer « ${esc(q.value.trim())} »</b></span></button>` : '')
+      + (!liste.length && !n ? '<p class="meta">Aucune fiche pour l’instant.</p>' : '');
+    res.querySelectorAll('button[data-id]').forEach(b => b.onclick = () => { choisi = b.dataset.id; maj(); surChoix(choisi); });
+    const c = res.querySelector('[data-creer]');
+    if (c) c.onclick = () => surChoix(null, q.value.trim());
+  };
+  q.addEventListener('input', maj); maj();
+  setTimeout(() => q.focus(), 50);
+}
+
+/* =========================================================
+   Liens
+   ========================================================= */
+function formLien(sourceId){
+  const src = fiche(sourceId);
+  let cible = null;
+  ouvrirModal(`
+    <h3>Lier ${esc(src.nom)} à…</h3>
+    <div id="fl-sel"></div>
+    <label class="champ"><span>Nature du lien</span><input type="text" id="fl-etiq" list="dl-etiq" placeholder="sire de, partenaire de, vu à…"></label>
+    <datalist id="dl-etiq">${ETIQUETTES.map(e => `<option value="${esc(e)}">`).join('')}</datalist>
+    <p class="meta" id="fl-phrase" style="margin:-6px 0 12px"></p>
+    <label class="bascule"><input type="checkbox" id="fl-prive" ${src.prive ? 'checked' : ''}> 🔒 Lien privé (soupçon que je garde pour moi)</label>
+    <div class="erreur" id="fl-err"></div>
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="fl-ok">Lier</button></div>
+  `, () => {
+    const phrase = () => { const c = fiche(cible); $('#fl-phrase').textContent = c ? `« ${src.nom} ${$('#fl-etiq').value.trim() || 'lié à'} ${c.nom} »` : ''; };
+    selecteurFiche($('#fl-sel'), {
+      exclure:[sourceId],
+      surChoix:(id, nouveauNom) => {
+        if (id){ cible = id; phrase(); return; }
+        const etiq = $('#fl-etiq').value.trim(), pv = $('#fl-prive').checked;
+        fermerModal();
+        formFiche({nom:nouveauNom, ensuite: async nid => {
+          verif(await sb.from('liens').insert({source:sourceId, cible:nid, etiquette:etiq || null, prive:pv}), 'Lien');
+          await apresModif(); location.hash = `#/fiche/${sourceId}`; toast('Fiche créée et liée');
+        }});
+      }
+    });
+    $('#fl-etiq').addEventListener('input', phrase);
+    $('#fl-ok').onclick = async () => {
+      if (!cible) { $('#fl-err').textContent = 'Choisissez une fiche (ou créez-la).'; return; }
+      if (S.liens.some(l => (l.source===sourceId && l.cible===cible) || (l.source===cible && l.cible===sourceId)) &&
+          !await confirmer('Un lien existe déjà entre ces deux fiches. En ajouter un autre ?', true)) return;
+      verif(await sb.from('liens').insert({source:sourceId, cible, etiquette:$('#fl-etiq').value.trim() || null, prive:$('#fl-prive').checked}), 'Lien');
+      fermerModal(); apresModif(); toast('Lien ajouté');
+    };
+  });
+}
+
+/* =========================================================
+   Pistes
+   ========================================================= */
+function vuePistes(){
+  navActive('pistes'); entete('Pistes');
+  const liste = S.pistes;
+  $('#contenu').innerHTML = `
+    <p class="meta" style="margin-top:0">Une piste = un tableau de liège sur une question. On y épingle des fiches, des notes et des photos.</p>
+    <div class="liste">${liste.length ? liste.map(p => {
+      const els = S.elements.filter(e => e.piste_id === p.id);
+      const imgs = els.map(e => e.image_path || fiche(e.fiche_id)?.image_path).filter(Boolean).slice(0,1);
+      return `<a class="item" href="#/piste/${p.id}">
+        ${imgs.length ? `<img class="vign" src="${esc(imgUrl(imgs[0]))}" alt="">` : '<div class="vign">📌</div>'}
+        <div class="txt"><div class="nom">${p.prive ? '🔒 ' : ''}${esc(p.titre)}</div>
+        <div class="sous">${els.length} élément${els.length>1?'s':''} · ouverte par ${esc(nomDe(p.auteur))}</div>
+        ${p.description ? `<div class="lies" style="color:var(--doux)">${esc(p.description)}</div>` : ''}</div></a>`;
+    }).join('') : '<div class="vide">Aucune piste pour l’instant.<br>Touchez <b>+</b> pour en ouvrir une.</div>'}</div>`;
+  ajouterFab(() => formPiste());
+}
+function formPiste(id=null, privéParDefaut=false){
+  const p = id ? piste(id) : {titre:'', description:'', prive:privéParDefaut};
+  ouvrirModal(`
+    <h3>${id ? 'Modifier la piste' : 'Nouvelle piste'}</h3>
+    <label class="champ"><span>Titre</span><input type="text" id="fp-t" value="${esc(p.titre)}" placeholder="Piste cartel, Elysium de Chicago…" maxlength="80"></label>
+    <label class="champ"><span>Question / idée de départ</span><textarea id="fp-d" style="min-height:70px">${esc(p.description)}</textarea></label>
+    ${(!id || p.auteur === S.uid) ? `<label class="bascule"><input type="checkbox" id="fp-p" ${p.prive?'checked':''}> 🔒 Piste privée</label>` : ''}
+    <div class="erreur" id="fp-err"></div>
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="fp-ok">Enregistrer</button></div>
+  `, () => {
+    if (!id) setTimeout(() => $('#fp-t').focus(), 50);
+    $('#fp-ok').onclick = async () => {
+      const titre = $('#fp-t').value.trim(); if (!titre) { $('#fp-err').textContent = 'Il faut un titre.'; return; }
+      const row = {titre, description:$('#fp-d').value.trim() || null};
+      const pv = $('#fp-p'); if (pv) row.prive = pv.checked;
+      if (id) verif(await sb.from('pistes').update(row).eq('id', id), 'Piste');
+      else { const n = verif(await sb.from('pistes').insert(row).select('id').single(), 'Piste'); fermerModal(); await apresModif(); location.hash = `#/piste/${n.id}`; return; }
+      fermerModal(); apresModif();
+    };
+  });
+}
+async function supprPiste(id){
+  if (!await confirmer('Supprimer toute cette piste et ce qui y est épinglé ? (Les fiches, elles, restent.)')) return;
+  verif(await sb.from('pistes').delete().eq('id', id), 'Suppression');
+  location.hash = '#/pistes'; apresModif();
+}
+function peutRetirerEl(e){ const p = piste(e.piste_id); return e.auteur === S.uid || p?.auteur === S.uid || (estMJ() && !p?.prive); }
+
+function vuePiste(id, mode){
+  const p = piste(id);
+  navActive('pistes');
+  if (!p){ entete('Piste', {retour:'#/pistes'}); $('#contenu').innerHTML = '<div class="vide">Cette piste n’existe plus (ou est privée).</div>'; return; }
+  const peutModif = !p.prive || p.auteur === S.uid;
+  entete((p.prive ? '🔒 ' : '') + p.titre, {retour:'#/pistes'});
+  const els = S.elements.filter(e => e.piste_id === id && (!e.fiche_id || fiche(e.fiche_id)));
+  const barre = `<div class="piste-barre">
+    <div class="onglets"><a href="#/piste/${id}" class="${mode==='liste'?'on':''}">☰ Liste</a><a href="#/piste/${id}?mode=toile" class="${mode==='toile'?'on':''}">📌 Liège</a></div>
+    ${peutModif ? `<button class="btn petit" onclick="formPiste('${id}')">✏️</button>` : ''}
+    ${peutSuppr(p) ? `<button class="btn petit danger" onclick="supprPiste('${id}')">🗑</button>` : ''}
+  </div>`;
+  if (mode === 'toile') return vueToile(p, els, barre);
+  const filsP = S.fils.filter(f => f.piste_id === id);
+  const libEl = eid => { const e = S.elements.find(x => x.id === eid); if (!e) return '?'; return e.fiche_id ? fiche(e.fiche_id)?.nom : (e.legende || (e.note || '').slice(0, 30) || 'photo'); };
+  $('#contenu').innerHTML = barre + `
+    ${p.description ? `<div class="desc" style="margin-bottom:14px">${esc(p.description)}</div>` : ''}
+    <div class="liste">${els.length ? els.map(e => {
+      const x = peutRetirerEl(e) ? `<button class="x" onclick="retirerEl('${e.id}')" aria-label="Retirer">×</button>` : '';
+      if (e.fiche_id){ const f = fiche(e.fiche_id);
+        return `<div class="el">${x}<a class="item" href="#/fiche/${f.id}">${vignette(f)}<div class="txt"><div class="nom">${f.prive?'🔒 ':''}${esc(f.nom)}</div><div class="sous">${TYPES[f.type].un}${sousTitre(f) ? ' · ' + esc(sousTitre(f)) : ''}</div>${e.legende ? `<div class="lies">${esc(e.legende)}</div>`:''}</div></a></div>`; }
+      if (e.image_path) return `<div class="el photo-carte">${x}<img src="${esc(imgUrl(e.image_path))}" alt="" onclick="voirImage('${esc(e.image_path)}')"><div class="leg">${esc(e.legende || '')}</div><div class="meta">${esc(nomDe(e.auteur))}</div></div>`;
+      return `<div class="el">${x}<div class="note-carte" onclick="formNote('${id}','${e.id}')">${esc(e.note)}</div><div class="meta">${esc(nomDe(e.auteur))}</div></div>`;
+    }).join('') : '<div class="vide">Rien d’épinglé.<br>Touchez <b>+</b> pour épingler une fiche, une note ou une photo.</div>'}</div>
+    ${filsP.length ? `<div class="section-titre">Fils tendus</div>${filsP.map(f => `<div class="lien-ligne"><div style="flex:1">🧵 <b>${esc(libEl(f.element_a))}</b> ↔ <b>${esc(libEl(f.element_b))}</b>${f.legende ? `<div class="phrase">${esc(f.legende)}</div>` : ''}</div><button class="x" onclick="supprFil('${f.id}')">×</button></div>`).join('')}` : ''}`;
+  ajouterFab(() => menuEpingler(id));
+}
+
+function menuEpingler(pid){
+  ouvrirModal(`<h3>Épingler…</h3>
+    <div class="choix">
+      <button id="me-f"><span>🗂️</span>Une fiche</button>
+      <button id="me-n"><span>📝</span>Une note</button>
+      <button id="me-p"><span>📷</span>Une photo</button>
+    </div><div style="height:10px"></div>
+    <button class="btn large" onclick="fermerModal()">Annuler</button>`, () => {
+    $('#me-f').onclick = () => { fermerModal(); choisirFichePourPiste(pid); };
+    $('#me-n').onclick = () => { fermerModal(); formNote(pid); };
+    $('#me-p').onclick = () => { fermerModal(); formPhoto(pid); };
+  });
+}
+function choisirFichePourPiste(pid){
+  const p = piste(pid);
+  const deja = S.elements.filter(e => e.piste_id === pid && e.fiche_id).map(e => e.fiche_id);
+  ouvrirModal(`<h3>Épingler une fiche</h3>${!p.prive ? '<p class="meta" style="margin-top:-8px">Piste partagée : les fiches privées ne peuvent pas y être épinglées.</p>' : ''}<div id="cf-sel"></div>
+    <button class="btn large" onclick="fermerModal()">Annuler</button>`, () => {
+    selecteurFiche($('#cf-sel'), {exclure:[...deja, ...(!p.prive ? S.fiches.filter(f => f.prive).map(f => f.id) : [])], surChoix: async (id, nouveauNom) => {
+      if (id){ await epingler(pid, id); fermerModal(); return; }
+      fermerModal();
+      formFiche({nom:nouveauNom, prive:false, ensuite: async nid => { await epingler(pid, nid); location.hash = `#/piste/${pid}`; }});
+    }});
+  });
+}
+async function epingler(pid, fid){
+  const p = piste(pid), f = fiche(fid);
+  if (!p.prive && f.prive){ toast('Partagez d’abord cette fiche pour l’épingler ici.'); return; }
+  verif(await sb.from('piste_elements').insert({piste_id:pid, fiche_id:fid}), 'Épingle');
+  toast('Épinglé'); apresModif();
+}
+function epinglerDans(fid){
+  const f = fiche(fid);
+  const pistes = S.pistes.filter(p => (p.prive ? p.auteur === S.uid : !f.prive));
+  ouvrirModal(`<h3>Épingler « ${esc(f.nom)} » dans…</h3>
+    <div class="resultats">${pistes.map(p => {
+      const deja = S.elements.some(e => e.piste_id === p.id && e.fiche_id === fid);
+      return `<button type="button" data-p="${p.id}" ${deja?'disabled':''}><span class="vign">📌</span><span><b>${p.prive?'🔒 ':''}${esc(p.titre)}</b>${deja?'<br><small>déjà épinglé</small>':''}</span></button>`;
+    }).join('') || '<p class="meta">Aucune piste disponible.</p>'}</div>
+    ${f.prive ? '<p class="meta">Fiche privée : seulement dans vos pistes privées.</p>' : ''}
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="ed-n">+ Nouvelle piste</button></div>`, () => {
+    document.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => { await epingler(b.dataset.p, fid); fermerModal(); });
+    $('#ed-n').onclick = () => { fermerModal(); formPiste(null, f.prive); };
+  });
+}
+function formNote(pid, eid=null){
+  const e = eid ? S.elements.find(x => x.id === eid) : null;
+  const peut = !e || peutRetirerEl(e) || !piste(pid).prive;
+  ouvrirModal(`<h3>${e ? 'Note' : 'Nouvelle note'}</h3>
+    <textarea id="fn-t" class="note-carte" style="min-height:140px;border:none" placeholder="Cartel mexicain ? Qui paie ?">${esc(e?.note || '')}</textarea>
+    <div style="height:12px"></div>
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button>${peut ? '<button class="btn plein" id="fn-ok">Épingler</button>' : ''}</div>`, () => {
+    setTimeout(() => $('#fn-t').focus(), 50);
+    const ok = $('#fn-ok'); if (!ok) return;
+    ok.onclick = async () => {
+      const note = $('#fn-t').value.trim(); if (!note) return;
+      if (e) verif(await sb.from('piste_elements').update({note}).eq('id', eid), 'Note');
+      else verif(await sb.from('piste_elements').insert({piste_id:pid, note, ...posLibre(pid)}), 'Note');
+      fermerModal(); apresModif();
+    };
+  });
+}
+function formPhoto(pid){
+  let fichier = null;
+  ouvrirModal(`<h3>Épingler une photo</h3>
+    <label class="champ"><span>Photo (galerie ou appareil)</span><input type="file" id="fo-f" accept="image/*"></label>
+    <div id="fo-ap"></div>
+    <label class="champ" style="margin-top:12px"><span>Légende</span><input type="text" id="fo-l" placeholder="Tableau de FRV ?" maxlength="140"></label>
+    <div class="erreur" id="fo-err"></div>
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="fo-ok">Épingler</button></div>`, () => {
+    $('#fo-f').onchange = ev => { fichier = ev.target.files[0]; if (fichier) $('#fo-ap').innerHTML = `<img class="apercu" src="${URL.createObjectURL(fichier)}">`; };
+    $('#fo-ok').onclick = async () => {
+      if (!fichier) { $('#fo-err').textContent = 'Choisissez une photo.'; return; }
+      const b = $('#fo-ok'); b.disabled = true; b.textContent = 'Envoi…';
+      try{
+        const chemin = await envoyerImage(fichier);
+        verif(await sb.from('piste_elements').insert({piste_id:pid, image_path:chemin, legende:$('#fo-l').value.trim() || null, ...posLibre(pid)}), 'Photo');
+        fermerModal(); apresModif(); toast('Photo épinglée');
+      }catch(e){ b.disabled = false; b.textContent = 'Épingler'; }
+    };
+  });
+}
+function posLibre(pid){
+  const st = toileEtat[pid]; if (!st) return {};
+  const cadre = document.querySelector('.toile-cadre'); if (!cadre) return {};
+  const r = cadre.getBoundingClientRect();
+  return { pos_x: Math.round((r.width/2 - st.x) / st.z - 75 + (Math.random()*40-20)), pos_y: Math.round((r.height/2 - st.y) / st.z - 60 + (Math.random()*40-20)) };
+}
+async function retirerEl(id){
+  if (!await confirmer('Retirer de la piste ? (La fiche elle-même n’est pas supprimée.)')) return;
+  verif(await sb.from('piste_elements').delete().eq('id', id), 'Retrait'); apresModif();
+}
+async function supprFil(id){
+  if (!await confirmer('Couper ce fil ?')) return;
+  verif(await sb.from('piste_fils').delete().eq('id', id), 'Fil'); apresModif();
+}
+
+/* =========================================================
+   Vue toile (le liège)
+   ========================================================= */
+function vueToile(p, els, barre){
+  const st = toileEtat[p.id] ||= {x:16, y:16, z:0.85, auto:true};
+  const cols = window.innerWidth < 600 ? 2 : 4;
+  els.forEach((e, i) => {
+    e._x = e.pos_x ?? 30 + (i % cols) * 180;
+    e._y = e.pos_y ?? 30 + Math.floor(i / cols) * 230;
+  });
+  const carte = e => {
+    if (e.fiche_id){ const f = fiche(e.fiche_id);
+      return `<div class="carte-t" data-el="${e.id}" style="left:${e._x}px;top:${e._y}px">
+        ${f.image_path ? `<img src="${esc(imgUrl(f.image_path))}" alt="" draggable="false">` : ''}
+        <div class="t">${f.prive?'🔒 ':''}${esc(f.nom)}</div><div class="s">${esc(TYPES[f.type].un)}${sousTitre(f) ? ' · ' + esc(sousTitre(f)) : ''}</div></div>`; }
+    if (e.image_path) return `<div class="carte-t photo" data-el="${e.id}" style="left:${e._x}px;top:${e._y}px"><img src="${esc(imgUrl(e.image_path))}" alt="" draggable="false"><div class="leg">${esc(e.legende || '')}</div></div>`;
+    return `<div class="carte-t note" data-el="${e.id}" style="left:${e._x}px;top:${e._y}px">${esc(e.note)}</div>`;
+  };
+  $('#contenu').innerHTML = `<div style="position:relative;z-index:21">${barre}</div>
+    <div class="toile-cadre" id="toile"><div class="monde" id="monde"><svg id="svg-fils"></svg>${els.map(carte).join('')}</div></div>
+    ${filMode ? `<div class="bandeau-fil">${filMode.premier ? 'Touchez la 2ᵉ carte…' : 'Touchez la 1ʳᵉ carte à relier'}</div>` : ''}
+    <div class="toile-outils">
+      <button class="btn petit ${filMode?'on':''}" id="t-fil">🧵 ${filMode ? 'Annuler' : 'Fil'}</button>
+      <button class="btn petit" id="t-centre">⤢ Tout voir</button>
+    </div>
+    ${els.length ? '' : '<div class="bandeau-fil">Liège vide : touchez + pour épingler</div>'}`;
+  // décaler la toile sous la barre
+  const h = $('#haut').getBoundingClientRect().height + $('.piste-barre').getBoundingClientRect().height + 20;
+  document.documentElement.style.setProperty('--haut', h + 'px');
+  document.body.style.overflow = 'hidden';
+  const monde = $('#monde'), cadre = $('#toile');
+  const appliquer = () => monde.style.transform = `translate(${st.x}px,${st.y}px) scale(${st.z})`;
+  const toutVoir = () => {
+    if (!els.length) return;
+    const cartes = [...monde.querySelectorAll('.carte-t')];
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    cartes.forEach(c => { x0=Math.min(x0,c.offsetLeft); y0=Math.min(y0,c.offsetTop); x1=Math.max(x1,c.offsetLeft+c.offsetWidth); y1=Math.max(y1,c.offsetTop+c.offsetHeight); });
+    const r = cadre.getBoundingClientRect(), m = 30;
+    st.z = Math.max(0.55, Math.min(1.2, Math.min((r.width - 2*m)/(x1-x0), (r.height - 2*m - 50)/(y1-y0))));
+    st.x = m - x0*st.z + ((r.width - 2*m) - (x1-x0)*st.z)/2;
+    st.y = m - y0*st.z;
+    appliquer();
+  };
+  appliquer();
+  dessinerFils(p.id, els);
+  if (st.auto){ st.auto = false; requestAnimationFrame(toutVoir); }
+  $('#t-centre').onclick = toutVoir;
+  $('#t-fil').onclick = () => { filMode = filMode ? null : {piste:p.id, premier:null}; rendre(); };
+  if (filMode?.premier) monde.querySelector(`[data-el="${filMode.premier}"]`)?.classList.add('choisie');
+
+  // ---- gestes : glisser une carte, déplacer la toile, pincer pour zoomer ----
+  const pts = new Map(); let geste = null;
+  cadre.addEventListener('pointerdown', ev => {
+    cadre.setPointerCapture(ev.pointerId);
+    pts.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
+    if (pts.size === 2){
+      const [a,b] = [...pts.values()];
+      geste = {type:'pince', d:Math.hypot(a.x-b.x, a.y-b.y), z:st.z, mx:(a.x+b.x)/2, my:(a.y+b.y)/2, sx:st.x, sy:st.y};
+      monde.querySelector('.glisse')?.classList.remove('glisse');
+      return;
+    }
+    const c = ev.target.closest('.carte-t'), etiq = ev.target.closest('[data-fil]');
+    geste = c ? {type:'carte', el:c, id:c.dataset.el, x0:ev.clientX, y0:ev.clientY, l0:c.offsetLeft, t0:c.offsetTop, bouge:false}
+              : {type:'pan', x0:ev.clientX, y0:ev.clientY, sx:st.x, sy:st.y, fil:etiq?.dataset.fil, bouge:false};
+    S.occupe = true;
+  });
+  cadre.addEventListener('pointermove', ev => {
+    if (!pts.has(ev.pointerId) || !geste) return;
+    pts.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
+    if (geste.type === 'pince' && pts.size >= 2){
+      const [a,b] = [...pts.values()], r = cadre.getBoundingClientRect();
+      const z = Math.max(0.2, Math.min(2.5, geste.z * Math.hypot(a.x-b.x, a.y-b.y) / geste.d));
+      const mx = geste.mx - r.left, my = geste.my - r.top;
+      const nmx = (a.x+b.x)/2 - r.left, nmy = (a.y+b.y)/2 - r.top;
+      st.x = nmx - (mx - geste.sx) * z / geste.z; st.y = nmy - (my - geste.sy) * z / geste.z; st.z = z;
+      appliquer(); return;
+    }
+    const dx = ev.clientX - geste.x0, dy = ev.clientY - geste.y0;
+    if (!geste.bouge && Math.hypot(dx, dy) < 6) return;
+    geste.bouge = true;
+    if (geste.type === 'carte'){
+      if (!peutDeplacer(p)) return;
+      geste.el.classList.add('glisse');
+      geste.el.style.left = (geste.l0 + dx / st.z) + 'px'; geste.el.style.top = (geste.t0 + dy / st.z) + 'px';
+      dessinerFils(p.id, els);
+    } else if (geste.type === 'pan'){ st.x = geste.sx + dx; st.y = geste.sy + dy; appliquer(); }
+  });
+  const fin = async ev => {
+    pts.delete(ev.pointerId);
+    if (!geste) return;
+    const g = geste;
+    if (g.type === 'pince'){ if (pts.size === 0) { geste = null; libere(); } return; }
+    geste = null;
+    if (g.type === 'carte'){
+      g.el.classList.remove('glisse');
+      if (g.bouge && peutDeplacer(p)){
+        const e = els.find(x => x.id === g.id);
+        e.pos_x = e._x = g.el.offsetLeft; e.pos_y = e._y = g.el.offsetTop;
+        const r = await sb.from('piste_elements').update({pos_x:e.pos_x, pos_y:e.pos_y}).eq('id', g.id);
+        if (r.error) toast('Position non enregistrée');
+      } else if (!g.bouge) toucheCarte(p, els.find(x => x.id === g.id));
+    } else if (g.type === 'pan' && !g.bouge && g.fil) ouvrirFil(g.fil);
+    libere();
+  };
+  cadre.addEventListener('pointerup', fin);
+  cadre.addEventListener('pointercancel', fin);
+  cadre.addEventListener('wheel', ev => {
+    ev.preventDefault();
+    const r = cadre.getBoundingClientRect(), mx = ev.clientX - r.left, my = ev.clientY - r.top;
+    const z = Math.max(0.2, Math.min(2.5, st.z * (ev.deltaY < 0 ? 1.1 : 0.9)));
+    st.x = mx - (mx - st.x) * z / st.z; st.y = my - (my - st.y) * z / st.z; st.z = z; appliquer();
+  }, {passive:false});
+  ajouterFab(() => menuEpingler(p.id));
+}
+function peutDeplacer(p){ return !p.prive || p.auteur === S.uid; }
+function libere(){ S.occupe = false; if (S.rechargeEnAttente) { S.rechargeEnAttente = false; planifierRecharge(); } }
+
+function dessinerFils(pid, els){
+  const svg = $('#svg-fils'); if (!svg) return;
+  const centre = id => { const c = document.querySelector(`.carte-t[data-el="${id}"]`); return c ? {x:c.offsetLeft + c.offsetWidth/2, y:c.offsetTop + 14} : null; };
+  const parFiche = {}; els.forEach(e => { if (e.fiche_id) parFiche[e.fiche_id] = e.id; });
+  let out = '';
+  const etiquette = (m, txt, cls, data='') => {
+    if (!txt) return '';
+    const mx = m.x, my = m.y, w = Math.min(220, Math.min(txt.length, 28) * 7.4 + 12);
+    return `<g ${data} class="${cls}"><rect class="etiq-fond" x="${mx - w/2}" y="${my - 10}" width="${w}" height="20" rx="3"></rect><text class="etiq" x="${mx}" y="${my + 4}" text-anchor="middle">${esc(txt.length > 28 ? txt.slice(0,27) + '…' : txt)}</text></g>`;
+  };
+  // liens connus entre fiches épinglées (pointillés)
+  S.liens.forEach(l => {
+    const ea = parFiche[l.source], eb = parFiche[l.cible]; if (!ea || !eb) return;
+    const a = centre(ea), b = centre(eb); if (!a || !b) return;
+    out += `<line class="fil-lien" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"></line>` + etiquette({x:(a.x+b.x)/2, y:(a.y+b.y)/2}, l.etiquette, '');
+  });
+  // fils tendus à la main (rouges, légèrement affaissés)
+  S.fils.filter(f => f.piste_id === pid).forEach(f => {
+    const a = centre(f.element_a), b = centre(f.element_b); if (!a || !b) return;
+    const mx = (a.x+b.x)/2, my = (a.y+b.y)/2 + Math.min(60, Math.hypot(a.x-b.x, a.y-b.y) * 0.08);
+    out += `<path class="fil-main" d="M${a.x},${a.y} Q${mx},${my} ${b.x},${b.y}"></path>`;
+    out += etiquette({x:0.25*a.x + 0.5*mx + 0.25*b.x, y:0.25*a.y + 0.5*my + 0.25*b.y}, f.legende || '🧵', 'etiq-main', `data-fil="${f.id}"`);
+  });
+  svg.innerHTML = out;
+}
+function toucheCarte(p, e){
+  if (!e) return;
+  if (filMode){
+    if (!filMode.premier){ filMode.premier = e.id; rendre(); return; }
+    if (filMode.premier === e.id){ filMode.premier = null; rendre(); return; }
+    const a = filMode.premier; filMode = null;
+    ouvrirModal(`<h3>Tendre un fil</h3>
+      <label class="champ"><span>Ce que vous soupçonnez (facultatif)</span><input type="text" id="tf-l" placeholder="même symbole ? même date ?" maxlength="80"></label>
+      <div class="boutons"><button class="btn" onclick="fermerModal();rendre()">Annuler</button><button class="btn plein" id="tf-ok">Tendre</button></div>`, () => {
+      setTimeout(() => $('#tf-l').focus(), 50);
+      $('#tf-ok').onclick = async () => {
+        verif(await sb.from('piste_fils').insert({piste_id:p.id, element_a:a, element_b:e.id, legende:$('#tf-l').value.trim() || null}), 'Fil');
+        fermerModal(); apresModif();
+      };
+    });
+    return;
+  }
+  if (e.fiche_id) location.hash = `#/fiche/${e.fiche_id}`;
+  else if (e.image_path){
+    ouvrirModal(`<img class="grande-img" src="${esc(imgUrl(e.image_path))}" alt="">
+      ${e.legende ? `<p class="note-carte" style="margin-top:10px">${esc(e.legende)}</p>` : ''}
+      <div class="boutons" style="margin-top:12px"><button class="btn" onclick="fermerModal()">Fermer</button>${peutRetirerEl(e) ? `<button class="btn danger" onclick="fermerModal();retirerEl('${e.id}')">Retirer</button>` : ''}</div>`);
+  } else {
+    formNote(p.id, e.id);
+    if (peutRetirerEl(e)) document.querySelector('.feuille .boutons').insertAdjacentHTML('afterbegin', `<button class="btn danger" onclick="fermerModal();retirerEl('${e.id}')">Retirer</button>`);
+  }
+}
+function ouvrirFil(id){
+  const f = S.fils.find(x => x.id === id); if (!f) return;
+  ouvrirModal(`<h3>🧵 Fil</h3><p>${esc(f.legende || 'Sans légende')}</p><p class="meta">Tendu par ${esc(nomDe(f.auteur))}</p>
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Fermer</button><button class="btn danger" onclick="fermerModal();supprFil('${id}')">Couper</button></div>`);
+}
+
+/* =========================================================
+   Vue : privé
+   ========================================================= */
+let carnetTimer;
+function vuePrive(){
+  navActive('prive'); entete('Privé');
+  const mesFiches = S.fiches.filter(f => f.prive && f.auteur === S.uid);
+  const mesPistes = S.pistes.filter(p => p.prive && p.auteur === S.uid);
+  $('#contenu').innerHTML = `
+    <p class="meta" style="margin-top:0">Ici, personne d’autre ne voit rien. Pas même la MJ.</p>
+    <div class="section-titre">Mon carnet</div>
+    <textarea class="carnet" id="carnet" placeholder="Ce que je sais. Ce que je ne dis pas.">${esc(S.carnet)}</textarea>
+    <div class="etat" id="carnet-etat"></div>
+    <div class="section-titre">Mes fiches privées (${mesFiches.length})</div>
+    <div class="liste">${mesFiches.map(f => `<a class="item" href="#/fiche/${f.id}">${vignette(f)}<div class="txt"><div class="nom">🔒 ${esc(f.nom)}</div><div class="sous">${TYPES[f.type].un}${sousTitre(f) ? ' · ' + esc(sousTitre(f)) : ''}</div></div></a>`).join('') || '<p class="meta">Aucune.</p>'}</div>
+    <div class="section-titre">Mes pistes privées (${mesPistes.length})</div>
+    <div class="liste">${mesPistes.map(p => `<a class="item" href="#/piste/${p.id}"><div class="vign">📌</div><div class="txt"><div class="nom">🔒 ${esc(p.titre)}</div></div></a>`).join('') || '<p class="meta">Aucune.</p>'}</div>
+    <div class="actions"><button class="btn" onclick="formPiste(null, true)">+ Piste privée</button></div>`;
+  const t = $('#carnet');
+  t.addEventListener('input', () => {
+    S.carnet = t.value; $('#carnet-etat').textContent = '…';
+    clearTimeout(carnetTimer);
+    carnetTimer = setTimeout(async () => {
+      const r = await sb.from('carnets').upsert({auteur:S.uid, contenu:S.carnet});
+      $('#carnet-etat').textContent = r.error ? 'Non enregistré : ' + r.error.message : 'Enregistré';
+    }, 900);
+  });
+  ajouterFab(() => formFiche({prive:true}));
+}
+
+/* =========================================================
+   Modales
+   ========================================================= */
+function ouvrirModal(html, monter){
+  fermerModal();
+  const v = document.createElement('div'); v.id = 'voile';
+  v.innerHTML = `<div class="feuille" role="dialog" aria-modal="true">${html}</div>`;
+  v.addEventListener('pointerdown', e => { if (e.target === v) v._fond = true; });
+  v.addEventListener('click', e => { if (e.target === v && v._fond) fermerModal(); });
+  document.body.appendChild(v);
+  if (monter) monter(v);
+}
+function fermerModal(){
+  const v = document.getElementById('voile'); if (!v) return;
+  v.remove();
+  if (S.rechargeEnAttente) { S.rechargeEnAttente = false; planifierRecharge(); }
+}
+function confirmer(msg){
+  return new Promise(res => {
+    ouvrirModal(`<p style="margin-top:0">${esc(msg)}</p><div class="boutons"><button class="btn" id="cf-non">Annuler</button><button class="btn plein" id="cf-oui">Confirmer</button></div>`, () => {
+      $('#cf-non').onclick = () => { fermerModal(); res(false); };
+      $('#cf-oui').onclick = () => { fermerModal(); res(true); };
+    });
+  });
+}
+
+sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') { S.uid = null; } });
+demarrer();
+</script>
+</body>
+</html>
