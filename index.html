@@ -71,7 +71,7 @@ nav.bas a.actif .ico{filter:drop-shadow(0 0 6px var(--sang2))}
 .liste{display:flex;flex-direction:column;gap:10px}
 .item{display:flex;gap:12px;align-items:center;background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:10px;text-decoration:none;color:inherit;position:relative}
 .item:active{background:var(--carte2)}
-.vign{width:54px;height:54px;border-radius:10px;flex:0 0 54px;object-fit:cover;object-position:50% 20%;background:var(--carte2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:24px;font-weight:700;color:var(--or)}
+.vign{width:54px;height:54px;border-radius:10px;flex:0 0 54px;object-fit:contain;background:var(--carte2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:24px;font-weight:700;color:var(--or)}
 .item .txt{min-width:0;flex:1}
 .item .nom{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .sous{font-size:13px;color:var(--doux);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -144,7 +144,7 @@ nav.bas a.actif .ico{filter:drop-shadow(0 0 6px var(--sang2))}
 .monde svg{position:absolute;left:0;top:0;width:4000px;height:4000px;overflow:visible}
 .carte-t{position:absolute;width:150px;background:var(--papier);color:var(--encre);border-radius:3px;padding:8px 8px 10px;box-shadow:0 4px 10px rgba(0,0,0,.35);user-select:none;-webkit-user-select:none}
 .carte-t::before{content:"";position:absolute;top:-7px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff6b7d,#8e1426 70%);box-shadow:0 2px 3px rgba(0,0,0,.4)}
-.carte-t img{width:100%;height:auto;max-height:190px;object-fit:contain;background:#e6dcc6;display:block;border-radius:2px;pointer-events:none}
+.carte-t img{width:100%;height:auto;max-height:190px;object-fit:contain;display:block;border-radius:2px;pointer-events:none}
 .carte-t .t{font-family:"Cormorant Garamond",serif;font-weight:700;font-size:17px;line-height:1.1;margin-top:6px;word-break:break-word}
 .carte-t .s{font-size:11px;color:#6b5c56}
 .carte-t.note{font-family:"Special Elite",monospace;font-size:13px;background:#fff6b8;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:hidden}
@@ -275,7 +275,10 @@ async function compresser(file){
     const c = document.createElement('canvas');
     c.width = Math.round(bmp.width * r); c.height = Math.round(bmp.height * r);
     c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.82));
+    // PNG / WebP (souvent détourés) : on garde la transparence ; photos : JPEG
+    const transparent = /png|webp|gif/.test(file.type);
+    let blob = await new Promise(res => c.toBlob(res, transparent ? 'image/webp' : 'image/jpeg', 0.85));
+    if (transparent && blob && blob.type !== 'image/webp') blob = await new Promise(res => c.toBlob(res, 'image/png'));
     return blob || file;
   }catch(e){ return file; }
 }
