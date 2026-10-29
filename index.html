@@ -178,6 +178,24 @@ svg .etiq-main{cursor:pointer}
 .carte-t.st-mort .t{text-decoration:line-through}
 .carte-t.st-inconnu::after{content:"?";position:absolute;right:6px;top:2px;font:700 34px/1 "Cormorant Garamond",serif;color:var(--sang);text-shadow:0 1px 0 #fff}
 
+/* Comparaison */
+#compare{position:fixed;inset:0;z-index:55;background:#0b0809;display:flex;flex-direction:column}
+#compare .cp-haut{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;border-bottom:1px solid var(--ligne);flex-wrap:wrap}
+#compare .cp-haut h3{flex:1;font-size:20px;margin:0;min-width:120px}
+#compare .cp-corps{flex:1;overflow:auto;padding:12px;display:grid;gap:12px;grid-template-columns:1fr;align-content:start}
+@media(min-width:760px){#compare .cp-corps.n2,#compare .cp-corps.n4{grid-template-columns:1fr 1fr}#compare .cp-corps.n3{grid-template-columns:1fr 1fr 1fr}}
+#compare figure{margin:0;background:var(--papier);border-radius:8px;padding:10px;display:flex;flex-direction:column}
+#compare figure .zone{overflow:auto;display:flex;justify-content:center;align-items:center;background:#fff;border-radius:4px;min-height:120px}
+#compare figure img{max-width:100%;max-height:62vh;object-fit:contain;display:block;transition:transform .15s;transform-origin:center}
+#compare figcaption{color:var(--encre);font-size:13px;margin-top:8px}
+#compare figcaption b{font-family:"Cormorant Garamond",serif;font-size:18px;display:block}
+#compare .superpose{position:relative;background:#fff;border-radius:8px;padding:10px;display:flex;justify-content:center}
+#compare .superpose .pile{position:relative;display:inline-block;max-width:100%}
+#compare .superpose img{display:block;max-width:100%;max-height:70vh}
+#compare .superpose img.dessus{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#compare .curseur{display:flex;align-items:center;gap:10px;color:var(--doux);font-size:13px;padding:4px 2px}
+#compare .curseur input{flex:1;accent-color:var(--sang)}
+
 /* Aide / tuto */
 .aide{width:30px;height:30px;flex:0 0 30px;border-radius:50%;border:1px solid var(--ligne);background:var(--carte2);color:var(--or);font-weight:700;font-size:15px;line-height:1;padding:0}
 .astuce{font-style:normal;text-transform:none;letter-spacing:0;color:var(--or)}
@@ -388,7 +406,7 @@ function route(){
   const params = Object.fromEntries(new URLSearchParams(qs || ''));
   return { parts, params };
 }
-window.addEventListener('hashchange', () => { fermerModal(); filMode = null; rendre(); });
+window.addEventListener('hashchange', () => { document.getElementById('compare')?.remove(); fermerModal(); filMode = null; rendre(); });
 
 function entete(titre, {retour=null, droite=''} = {}){
   const qui = `<div class="qui"><b>${esc(S.profil?.nom || '')}</b>${estMJ() ? ' · MJ' : ''}<br><button onclick="deconnexion()">quitter</button></div>`;
@@ -491,6 +509,7 @@ function vueFiche(id){
         <div class="nom" style="font-weight:600">${l.prive ? '🔒 ' : ''}${esc(o.nom)}</div>
         <div class="phrase">${esc(src.nom)} <em>${esc(l.etiquette || 'lié à')}</em> ${esc(cib.nom)}</div>
       </div></a>
+      ${o.image_path && f.image_path ? `<button class="x" onclick="comparer([itemFiche('${f.id}'), itemFiche('${o.id}')])" aria-label="Comparer les images" title="Comparer côte à côte" style="font-size:16px">⚖</button>` : ''}
       ${(!l.prive || l.auteur === S.uid) ? `<button class="x" onclick="formModifLien('${l.id}')" aria-label="Modifier ce lien" style="font-size:16px">✏️</button>` : ''}
       ${peutSuppr(l) ? `<button class="x" onclick="supprLien('${l.id}')" aria-label="Retirer ce lien">×</button>` : ''}
     </div>`;
@@ -507,6 +526,7 @@ function vueFiche(id){
     <div class="meta">Ajouté par ${esc(nomDe(f.auteur))}</div>
     <div class="actions">
       <button class="btn" onclick="formLien('${id}')">🔗 Lier</button>
+      ${f.image_path ? `<button class="btn" onclick="choisirComparaisonFiche('${id}')">⚖ Comparer</button>` : ''}
       <button class="btn" onclick="epinglerDans('${id}')">📌 Épingler</button>
       ${(!f.prive || f.auteur === S.uid) ? `<button class="btn" onclick="formFiche({id:'${id}'})">✏️ Modifier</button>` : ''}
       ${f.prive && f.auteur === S.uid ? `<button class="btn" onclick="rendrePublic('${id}')">📣 Partager</button>` : ''}
@@ -803,6 +823,7 @@ function vuePiste(id, mode){
   const els = S.elements.filter(e => e.piste_id === id && (!e.fiche_id || fiche(e.fiche_id)));
   const barre = `<div class="piste-barre">
     <div class="onglets"><a href="#/piste/${id}?mode=liste" class="${mode==='liste'?'on':''}">☰ Liste</a><a href="#/piste/${id}?mode=toile" class="${mode==='toile'?'on':''}">📌 Liège</a></div>
+    <button class="btn petit" onclick="choisirComparaisonPiste('${id}')">⚖ Comparer</button>
     ${peutModif ? `<button class="btn petit" onclick="formPiste('${id}')">✏️</button>` : ''}
     ${peutSuppr(p) ? `<button class="btn petit danger" onclick="supprPiste('${id}')">🗑</button>` : ''}
   </div>`;
@@ -1105,6 +1126,64 @@ function toucheCarte(p, e){
     if (peutRetirerEl(e)) document.querySelector('.feuille .boutons').insertAdjacentHTML('afterbegin', `<button class="btn danger" onclick="fermerModal();retirerEl('${e.id}')">Retirer</button>`);
   }
 }
+/* =========================================================
+   Comparer des images côte à côte (signatures, photos…)
+   ========================================================= */
+function itemFiche(id){ const f = fiche(id); return f && f.image_path ? {titre:f.nom, img:imgUrl(f.image_path), sous:f.description || ''} : null; }
+function itemElement(e){
+  if (e.fiche_id){ const f = fiche(e.fiche_id); return f && f.image_path ? {titre:f.nom, img:imgUrl(f.image_path), sous:e.legende || f.description || ''} : null; }
+  return e.image_path ? {titre:e.legende || 'Photo', img:imgUrl(e.image_path), sous:''} : null;
+}
+let compZoom = 1;
+function comparer(items){
+  items = items.filter(Boolean); if (items.length < 2) { toast('Il faut au moins deux images.'); return; }
+  document.getElementById('compare')?.remove();
+  compZoom = 1;
+  const d = document.createElement('div'); d.id = 'compare';
+  const cote = () => `<div class="cp-corps n${Math.min(items.length,4)}">${items.map(it => `<figure><div class="zone"><img src="${esc(it.img)}" alt=""></div><figcaption><b>${esc(it.titre)}</b>${esc((it.sous || '').slice(0, 160))}</figcaption></figure>`).join('')}</div>`;
+  const pile = () => `<div class="cp-corps"><div class="curseur"><span>${esc(items[0].titre)}</span><input type="range" min="0" max="100" value="50" id="cp-fondu"><span>${esc(items[1].titre)}</span></div>
+    <div class="superpose"><div class="pile"><img src="${esc(items[0].img)}" alt=""><img class="dessus" id="cp-dessus" src="${esc(items[1].img)}" alt="" style="opacity:.5"></div></div>
+    <p class="meta" style="color:var(--doux)">Faites glisser le curseur : ce qui bouge entre les deux images saute aux yeux.</p></div>`;
+  let mode = 'cote';
+  const dessiner = () => {
+    d.innerHTML = `<div class="cp-haut"><h3>⚖ Comparaison</h3>
+      ${items.length === 2 ? `<button class="btn petit" id="cp-mode">${mode === 'cote' ? '◐ Superposer' : '▥ Côte à côte'}</button>` : ''}
+      ${mode === 'cote' ? '<button class="btn petit" id="cp-moins">−</button><button class="btn petit" id="cp-plus">+</button>' : ''}
+      <button class="btn petit plein" id="cp-fermer">Fermer</button></div>${mode === 'cote' ? cote() : pile()}`;
+    d.querySelector('#cp-fermer').onclick = () => d.remove();
+    const m = d.querySelector('#cp-mode'); if (m) m.onclick = () => { mode = mode === 'cote' ? 'pile' : 'cote'; dessiner(); };
+    const zoom = k => { compZoom = Math.max(1, Math.min(4, compZoom * k)); d.querySelectorAll('.zone img').forEach(i => { i.style.maxHeight = compZoom > 1 ? 'none' : ''; i.style.maxWidth = compZoom > 1 ? 'none' : ''; i.style.width = compZoom > 1 ? (100 * compZoom) + '%' : ''; }); };
+    const pl = d.querySelector('#cp-plus'); if (pl) pl.onclick = () => zoom(1.5);
+    const mo = d.querySelector('#cp-moins'); if (mo) mo.onclick = () => zoom(1/1.5);
+    const f = d.querySelector('#cp-fondu'); if (f) f.oninput = () => d.querySelector('#cp-dessus').style.opacity = f.value / 100;
+  };
+  dessiner();
+  document.body.appendChild(d);
+}
+function choisirComparaison(titre, candidats, preselection = []){
+  const choix = new Set(preselection);
+  ouvrirModal(`<h3>${esc(titre)}</h3><p class="meta" style="margin-top:-8px">Touchez 2 à 4 images, puis « Comparer ».</p>
+    <div class="resultats" id="cmp-liste" style="max-height:50vh"></div>
+    <div class="boutons"><button class="btn" onclick="fermerModal()">Annuler</button><button class="btn plein" id="cmp-ok">Comparer</button></div>`, () => {
+    const maj = () => {
+      $('#cmp-liste').innerHTML = candidats.map((c, k) => `<button type="button" data-k="${k}" class="${choix.has(k)?'on':''}"><img class="vign" src="${esc(c.img)}" alt="" style="width:46px;height:46px;flex-basis:46px"><span><b>${choix.has(k)?'✓ ':''}${esc(c.titre)}</b></span></button>`).join('') || '<p class="meta">Aucune image ici.</p>';
+      document.querySelectorAll('#cmp-liste button').forEach(b => b.onclick = () => { const k = +b.dataset.k; if (choix.has(k)) choix.delete(k); else if (choix.size < 4) choix.add(k); maj(); });
+      $('#cmp-ok').textContent = `Comparer (${choix.size})`;
+    };
+    maj();
+    $('#cmp-ok').onclick = () => { if (choix.size < 2) { toast('Choisissez au moins deux images.'); return; } const sel = [...choix].map(k => candidats[k]); fermerModal(); comparer(sel); };
+  });
+}
+function choisirComparaisonPiste(pid){
+  const cands = S.elements.filter(e => e.piste_id === pid).map(itemElement).filter(Boolean);
+  choisirComparaison('Comparer des images de la piste', cands);
+}
+function choisirComparaisonFiche(fid){
+  const cands = S.fiches.filter(f => f.image_path).map(f => itemFiche(f.id));
+  const k = S.fiches.filter(f => f.image_path).findIndex(f => f.id === fid);
+  choisirComparaison('Comparer avec…', cands, k >= 0 ? [k] : []);
+}
+
 function ouvrirFil(id){
   const f = S.fils.find(x => x.id === id); if (!f) return;
   ouvrirModal(`<h3>🧵 Fil</h3><p>${esc(f.legende || 'Sans légende')}</p><p class="meta">Tendu par ${esc(nomDe(f.auteur))}</p>
@@ -1204,6 +1283,7 @@ const ETAPES_TUTO = [
       <li><b>🧵 Fil</b> : touchez deux cartes pour tendre un fil rouge et y écrire un soupçon. Touchez son étiquette pour le couper.</li>
       <li>Les pointillés apparaissent seuls : ce sont les liens déjà connus entre les fiches épinglées.</li>
       <li><b>⤢ Tout voir</b> si vous êtes perdu.</li>
+      <li><b>⚖ Comparer</b> : affichez 2 à 4 images côte à côte, ou superposez-en deux (pratique pour des signatures ou des photos presque identiques).</li>
     </ul>` },
   { ico:'🔒', titre:'Ce qui est privé reste privé', html:`
     <ul>
