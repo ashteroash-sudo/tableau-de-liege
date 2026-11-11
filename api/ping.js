@@ -1,5 +1,6 @@
 // Réveil quotidien du projet Supabase (tableau-de-liege).
-// Vercel l'appelle une fois par jour (voir "crons" dans vercel.json) :
+// Vercel l'appelle deux fois par jour (voir "crons" dans vercel.json) ;
+// la fonction SQL ping() lit de vraies tables (comptage) :
 // Supabase voit de l'activité et ne met jamais le projet gratuit en pause.
 const SUPABASE_URL = 'https://lxjqfytiudvypnbdmmzo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4vTVtuBUlXz8EI4DbTIrrw_SbXsqyGs';

@@ -1,5 +1,12 @@
 {
   "crons": [
-    { "path": "/api/ping", "schedule": "17 4 * * *" }
+    {
+      "path": "/api/ping",
+      "schedule": "17 4 * * *"
+    },
+    {
+      "path": "/api/ping?soir=1",
+      "schedule": "47 16 * * *"
+    }
   ]
 }
